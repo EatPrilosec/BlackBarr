@@ -148,33 +148,57 @@ async def upsert_media(file_path: str, file_hash: str, file_size: int, mtime: fl
         """, (file_path, file_hash, file_size, mtime, 1 if is_hdr else 0, crop_val, status, now, now))
         await db.commit()
 
-async def list_media(search: str = "", status: str = "", limit: int = 100, offset: int = 0):
+async def list_media(
+    search: str = "",
+    status: str = "",
+    is_hdr: Optional[bool] = None,
+    sort_by: str = "updated_at",
+    sort_order: str = "desc",
+    limit: int = 100,
+    offset: int = 0
+):
     async with get_db() as db:
-        query = "SELECT * FROM media_files WHERE 1=1"
+        where_clauses = ["1=1"]
         params = []
-        if search:
-            query += " AND file_path LIKE ?"
-            params.append(f"%{search}%")
-        if status:
-            query += " AND status = ?"
-            params.append(status)
-        query += " ORDER BY updated_at DESC LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
 
-        async with db.execute(query, params) as cursor:
+        if search:
+            where_clauses.append("file_path LIKE ?")
+            params.append(f"%{search}%")
+
+        if status:
+            if status.upper() == "CROPPED":
+                where_clauses.append("status = 'PROCESSED' AND crop_val IS NOT NULL AND crop_val != ''")
+            elif status.upper() in ["NO_BLACK_BARS", "FULL_FRAME"]:
+                where_clauses.append("status = 'PROCESSED' AND (crop_val IS NULL OR crop_val = '')")
+            else:
+                where_clauses.append("status = ?")
+                params.append(status.upper())
+
+        if is_hdr is not None:
+            where_clauses.append("is_hdr = ?")
+            params.append(1 if is_hdr else 0)
+
+        where_sql = " AND ".join(where_clauses)
+
+        allowed_sorts = {
+            "file_path": "file_path",
+            "is_hdr": "is_hdr",
+            "crop_val": "crop_val",
+            "status": "status",
+            "updated_at": "updated_at"
+        }
+        order_col = allowed_sorts.get(sort_by.lower(), "updated_at")
+        order_dir = "ASC" if sort_order.lower() == "asc" else "DESC"
+
+        query = f"SELECT * FROM media_files WHERE {where_sql} ORDER BY {order_col} {order_dir} LIMIT ? OFFSET ?"
+        query_params = list(params) + [limit, offset]
+
+        async with db.execute(query, query_params) as cursor:
             rows = await cursor.fetchall()
             items = [dict(row) for row in rows]
 
-        count_query = "SELECT COUNT(*) as count FROM media_files WHERE 1=1"
-        count_params = []
-        if search:
-            count_query += " AND file_path LIKE ?"
-            count_params.append(f"%{search}%")
-        if status:
-            count_query += " AND status = ?"
-            count_params.append(status)
-
-        async with db.execute(count_query, count_params) as cursor:
+        count_query = f"SELECT COUNT(*) as count FROM media_files WHERE {where_sql}"
+        async with db.execute(count_query, params) as cursor:
             count_row = await cursor.fetchone()
             total = count_row["count"] if count_row else 0
 

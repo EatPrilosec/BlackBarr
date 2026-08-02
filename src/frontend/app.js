@@ -5,6 +5,8 @@ const pageSize = 50;
 let totalItems = 0;
 let searchDebounceTimeout = null;
 let scanStatusInterval = null;
+let currentSortBy = 'updated_at';
+let currentSortOrder = 'desc';
 
 document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
@@ -33,6 +35,28 @@ function setupEventListeners() {
     document.getElementById('statusFilter').addEventListener('change', () => {
         currentPage = 1;
         loadMediaTable();
+    });
+
+    // Format Filter (HDR / SDR)
+    document.getElementById('formatFilter').addEventListener('change', () => {
+        currentPage = 1;
+        loadMediaTable();
+    });
+
+    // Column Header Sorting
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.getAttribute('data-sort');
+            if (currentSortBy === col) {
+                currentSortOrder = (currentSortOrder === 'asc') ? 'desc' : 'asc';
+            } else {
+                currentSortBy = col;
+                currentSortOrder = (col === 'file_path') ? 'asc' : 'desc';
+            }
+            updateSortHeaderIcons();
+            currentPage = 1;
+            loadMediaTable();
+        });
     });
 
     // Refresh Button
@@ -153,17 +177,25 @@ async function loadConfig() {
 async function loadMediaTable() {
     const search = document.getElementById('searchInput').value.trim();
     const status = document.getElementById('statusFilter').value;
+    const format = document.getElementById('formatFilter').value;
     const offset = (currentPage - 1) * pageSize;
 
     const tbody = document.getElementById('mediaTableBody');
     
     try {
-        const query = new URLSearchParams({
+        const queryParams = {
             search: search,
             status: status,
+            sort_by: currentSortBy,
+            sort_order: currentSortOrder,
             limit: pageSize,
             offset: offset
-        });
+        };
+
+        if (format === 'hdr') queryParams.is_hdr = 'true';
+        if (format === 'sdr') queryParams.is_hdr = 'false';
+
+        const query = new URLSearchParams(queryParams);
         const resp = await fetch(`/api/media?${query.toString()}`);
         if (!resp.ok) throw new Error("Failed to load media items");
         
@@ -477,6 +509,21 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.remove();
     }, 3500);
+}
+
+function updateSortHeaderIcons() {
+    const columns = ['file_path', 'is_hdr', 'crop_val', 'status', 'updated_at'];
+    columns.forEach(col => {
+        const iconEl = document.getElementById(`sort_${col}`);
+        if (!iconEl) return;
+        if (currentSortBy === col) {
+            iconEl.innerText = (currentSortOrder === 'asc') ? '↑' : '↓';
+            iconEl.className = 'sort-icon text-[10px] text-indigo-400 font-bold';
+        } else {
+            iconEl.innerText = '↕';
+            iconEl.className = 'sort-icon text-[10px] text-slate-500';
+        }
+    });
 }
 
 function escapeHtml(str) {

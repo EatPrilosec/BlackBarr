@@ -31,16 +31,29 @@ class MediaItemCreateModel(BaseModel):
 @router.get("/media")
 async def get_media_list(
     search: str = Query("", description="Filter by file path"),
-    status: str = Query("", description="Filter by status (PROCESSED, PENDING, ERROR, SKIPPED)"),
+    status: str = Query("", description="Filter by status (CROPPED, NO_BLACK_BARS, PENDING, ERROR, SKIPPED)"),
+    is_hdr: Optional[bool] = Query(None, description="Filter by format (True for HDR, False for SDR)"),
+    sort_by: str = Query("updated_at", description="Sort by column (file_path, is_hdr, crop_val, status, updated_at)"),
+    sort_order: str = Query("desc", description="Sort order (asc or desc)"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0)
 ):
-    items, total = await list_media(search=search, status=status, limit=limit, offset=offset)
+    items, total = await list_media(
+        search=search,
+        status=status,
+        is_hdr=is_hdr,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        limit=limit,
+        offset=offset
+    )
     return {
         "items": items,
         "total": total,
         "limit": limit,
-        "offset": offset
+        "offset": offset,
+        "sort_by": sort_by,
+        "sort_order": sort_order
     }
 
 @router.post("/scan")
