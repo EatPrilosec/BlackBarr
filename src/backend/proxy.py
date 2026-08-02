@@ -141,9 +141,21 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
             content=body
         )
         
-        resp = await client.send(req, stream=True)
+        resp = await client.send(req, stream=True, follow_redirects=False)
 
         out_headers = dict(resp.headers)
+
+        # Rewrite Location header for redirects so browser receives relative path (e.g. /web/index.html)
+        for loc_key in ["location", "Location"]:
+            if loc_key in out_headers:
+                loc = out_headers[loc_key]
+                if loc.startswith(target_server):
+                    out_headers[loc_key] = loc[len(target_server):] or "/"
+                elif loc.startswith("http://") or loc.startswith("https://"):
+                    from urllib.parse import urlparse
+                    parsed = urlparse(loc)
+                    out_headers[loc_key] = parsed.path + ("?" + parsed.query if parsed.query else "")
+
         out_headers.pop("content-length", None)
         out_headers.pop("transfer-encoding", None)
         out_headers.pop("content-encoding", None)  # Stripping content-encoding fixes black/grey blank page!
