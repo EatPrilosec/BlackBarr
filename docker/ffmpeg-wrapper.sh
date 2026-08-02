@@ -3,12 +3,32 @@
 set -e
 
 DB_PATH="${BLACKBARR_DB_PATH:-/config/BlackBarr.db}"
-REAL_FFMPEG="${REAL_FFMPEG_PATH:-/usr/bin/ffmpeg}"
+# Common paths for Jellyfin and Emby FFmpeg
+COMMON_PATHS=(
+    "/usr/lib/jellyfin-ffmpeg/ffmpeg"
+    "/bin/ffmpeg"
+    "/usr/local/bin/ffmpeg"
+    "/usr/bin/ffmpeg"
+)
+
+REAL_FFMPEG="${REAL_FFMPEG_PATH}"
+
+if [ -z "$REAL_FFMPEG" ] || [ ! -x "$REAL_FFMPEG" ]; then
+    for p in "${COMMON_PATHS[@]}"; do
+        if [ -x "$p" ]; then
+            REAL_FFMPEG="$p"
+            break
+        fi
+    done
+fi
 
 # Fallback to system ffmpeg if custom path doesn't exist
-if [ ! -x "$REAL_FFMPEG" ]; then
+if [ -z "$REAL_FFMPEG" ] || [ ! -x "$REAL_FFMPEG" ]; then
     if command -v ffmpeg >/dev/null 2>&1; then
         REAL_FFMPEG="$(command -v ffmpeg)"
+    else
+        echo "Error: Could not find real ffmpeg executable!" >&2
+        exit 127
     fi
 fi
 
