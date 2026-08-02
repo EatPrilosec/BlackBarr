@@ -8,10 +8,10 @@ services:
     container_name: blackbarr
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "6788:6788"
     environment:
       - TARGET_SERVER_URL=http://jellyfin:8096
-      - PORT=8080
+      - PORT=6788
       - SCAN_DIRECTORIES=/media/movies, /media/tv
       - BLACKBARR_DB_PATH=/config/BlackBarr.db
     volumes:

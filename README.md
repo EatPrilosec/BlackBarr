@@ -20,7 +20,7 @@
 
 ```mermaid
 flowchart TD
-    Client[Media Client / Web / TV App] -->|1. PlaybackInfo Request| Proxy[BlackBarr Reverse Proxy :8080]
+    Client[Media Client / Web / TV App] -->|1. PlaybackInfo Request| Proxy[BlackBarr Reverse Proxy :6788]
     Proxy -->|2. Queries Crop Status| DB[(SQLite DB /config/BlackBarr.db)]
     Proxy -->|3. Mutates Payload if Cropped| Server[Jellyfin / Emby Server :8096]
     Server -->|4. Invokes Encoder| Wrapper[ffmpeg-wrapper.sh]
@@ -46,10 +46,10 @@ services:
     container_name: blackbarr
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "6788:6788"
     environment:
       - TARGET_SERVER_URL=http://jellyfin:8096
-      - PORT=8080
+      - PORT=6788
       - SCAN_DIRECTORIES=/media/movies, /media/tv
       - BLACKBARR_DB_PATH=/config/BlackBarr.db
     volumes:
@@ -78,7 +78,7 @@ Run container:
 docker compose up -d
 ```
 
-Access the BlackBarr Management UI at: `http://localhost:8080/ui`
+Access the BlackBarr Management UI at: `http://localhost:6788/ui`
 
 ---
 
@@ -87,7 +87,7 @@ Access the BlackBarr Management UI at: `http://localhost:8080/ui`
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `TARGET_SERVER_URL` | `http://localhost:8096` | Downstream Jellyfin or Emby server URL |
-| `PORT` | `8080` | Port for BlackBarr proxy & REST API |
+| `PORT` | `6788` | Port for BlackBarr proxy & REST API |
 | `SCAN_DIRECTORIES` | `/media` | Comma-separated list of mounted media directories (configurable via Web UI) |
 | `BLACKBARR_DB_PATH` | `/config/BlackBarr.db` | SQLite database file location |
 

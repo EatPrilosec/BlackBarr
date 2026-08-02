@@ -50,7 +50,7 @@ auto_inject_config "/target-emby-config" "Emby"
 # -------------------------------------------------------------
 # Launch Uvicorn / FastAPI Backend
 # -------------------------------------------------------------
-PORT="${PORT:-8080}"
+PORT="${PORT:-6788}"
 export PYTHONPATH="/app/src/backend:$PYTHONPATH"
 
 echo "[BlackBarr] Starting FastAPI server on port $PORT..."
