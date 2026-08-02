@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, Response
 
 from database import init_db, get_config
 from api import router as api_router
-from proxy import reverse_proxy_handler
+from proxy import reverse_proxy_handler, reverse_proxy_emby_handler
 from scanner import scanner_instance
 
 logging.basicConfig(
@@ -96,10 +96,34 @@ async def routing_middleware(request: Request, call_next):
         if os.path.exists(target) and os.path.isfile(target):
             return FileResponse(target)
 
-    # Proxy all other Jellyfin/Emby requests
+    # Proxy all other Jellyfin requests
     return await reverse_proxy_handler(request)
 
-if __name__ == "__main__":
+# Secondary FastAPI app for dedicated Emby Proxy on EMBY_PORT
+emby_app = FastAPI(title="BlackBarr Dedicated Emby Proxy")
+
+@emby_app.middleware("http")
+async def emby_routing_middleware(request: Request, call_next):
+    return await reverse_proxy_emby_handler(request)
+
+async def start_servers():
     import uvicorn
-    port = int(os.getenv("PORT", "6788"))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
+    port_jf = int(os.getenv("PORT", "6788"))
+    port_emby = int(os.getenv("EMBY_PORT", "6789"))
+
+    config_jf = uvicorn.Config(app, host="0.0.0.0", port=port_jf, log_level="info")
+    config_emby = uvicorn.Config(emby_app, host="0.0.0.0", port=port_emby, log_level="info")
+
+    server_jf = uvicorn.Server(config_jf)
+    server_emby = uvicorn.Server(config_emby)
+
+    logger.info(f"Starting BlackBarr Jellyfin Proxy & UI on port {port_jf}")
+    logger.info(f"Starting BlackBarr Dedicated Emby Proxy on port {port_emby}")
+
+    await asyncio.gather(
+        server_jf.serve(),
+        server_emby.serve()
+    )
+
+if __name__ == "__main__":
+    asyncio.run(start_servers())

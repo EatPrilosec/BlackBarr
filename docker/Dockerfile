@@ -26,6 +26,6 @@ RUN chmod +x /usr/local/bin/ffmpeg-wrapper.sh /usr/local/bin/entrypoint.sh
 # Create persistent storage directories
 VOLUME ["/config", "/media"]
 
-EXPOSE 6788
+EXPOSE 6788 6789
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

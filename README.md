@@ -46,11 +46,13 @@ services:
     container_name: blackbarr
     restart: unless-stopped
     ports:
-      - "6788:6788"
+      - "6788:6788"   # Jellyfin Proxy & Web Management UI
+      - "6789:6789"   # Dedicated Emby Proxy
     environment:
       - TARGET_SERVER_URL=http://jellyfin:8096
       - TARGET_EMBY_URL=http://emby:8096
       - PORT=6788
+      - EMBY_PORT=6789
       - SCAN_DIRECTORIES=/media/movies, /media/tv
       - BLACKBARR_DB_PATH=/config/BlackBarr.db
     volumes:
@@ -101,9 +103,10 @@ Access the BlackBarr Management UI at: `http://localhost:6788/ui`
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `TARGET_SERVER_URL` | `http://localhost:8096` | Downstream Jellyfin (or primary Emby) server URL |
-| `TARGET_EMBY_URL` | `""` | Optional secondary Emby server URL for simultaneous dual-server routing |
-| `PORT` | `6788` | Port for BlackBarr proxy & REST API |
+| `TARGET_SERVER_URL` | `http://localhost:8096` | Downstream Jellyfin server URL |
+| `TARGET_EMBY_URL` | `""` | Downstream Emby server URL |
+| `PORT` | `6788` | Port for Jellyfin Reverse Proxy & Web Management UI |
+| `EMBY_PORT` | `6789` | Dedicated Port for Emby Reverse Proxy |
 | `SCAN_DIRECTORIES` | `/media` | Comma-separated list of mounted media directories (configurable via Web UI) |
 | `BLACKBARR_DB_PATH` | `/config/BlackBarr.db` | SQLite database file location |
 

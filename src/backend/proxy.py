@@ -91,19 +91,12 @@ def mutate_playback_info_response_payload(body_bytes: bytes) -> bytes:
         logger.warning(f"Failed to parse or mutate outgoing PlaybackInfo response: {e}")
         return body_bytes
 
-async def reverse_proxy_handler(request: Request) -> Response:
-    primary_target = await get_config("target_server_url", os.getenv("TARGET_SERVER_URL", "http://localhost:8096"))
-    emby_target = await get_config("target_emby_url", os.getenv("TARGET_EMBY_URL", ""))
-    
-    target_server = primary_target
-    if emby_target:
-        headers_lower = {k.lower(): v for k, v in request.headers.items()}
-        user_agent = headers_lower.get("user-agent", "").lower()
-        if "x-emby-authorization" in headers_lower or "emby" in user_agent or request.url.path.startswith("/emby"):
-            target_server = emby_target
+async def proxy_to_target(request: Request, default_target: str, config_key: str, server_name: str) -> Response:
+    configured_url = await get_config(config_key, default_target)
+    if not configured_url:
+        return Response(content=f"BlackBarr Proxy Error: {server_name} target URL not configured", status_code=502)
 
-    target_server = target_server.rstrip("/")
-    
+    target_server = configured_url.rstrip("/")
     url = f"{target_server}{request.url.path}"
     if request.url.query:
         url += f"?{request.url.query}"
@@ -112,7 +105,6 @@ async def reverse_proxy_handler(request: Request) -> Response:
     headers.pop("host", None)
     
     body = await request.body()
-    
     path = request.url.path
     is_playback_info = "/PlaybackInfo" in path or "/Sessions" in path
     
@@ -120,24 +112,21 @@ async def reverse_proxy_handler(request: Request) -> Response:
     item_id = None
     
     if is_playback_info:
-        # Extract item ID from path like /Items/{Id}/PlaybackInfo
         parts = path.strip("/").split("/")
         if len(parts) >= 3 and parts[0] == "Items" and parts[2] == "PlaybackInfo":
             item_id = parts[1]
         
-        # Check query parameters for ItemId
         if not item_id:
             item_id = request.query_params.get("ItemId") or request.query_params.get("itemId")
             
         if item_id:
             should_force = await check_item_requires_cropping(item_id=item_id)
         else:
-            # If PlaybackInfo requested, check if forced transcoding is active globally
             force_global = await get_config("force_transcode_enabled", "true")
             should_force = (force_global.lower() == "true")
 
     if is_playback_info and should_force and body:
-        logger.info(f"Intercepting & mutating PlaybackInfo request for item {item_id or 'unknown'} to force transcoding")
+        logger.info(f"[{server_name} Proxy] Intercepting PlaybackInfo request for item {item_id or 'unknown'} to force transcoding")
         body = mutate_playback_info_request_payload(body)
         headers["content-length"] = str(len(body))
 
@@ -151,7 +140,6 @@ async def reverse_proxy_handler(request: Request) -> Response:
         
         resp = await client.send(req, stream=True)
 
-        # Intercept and mutate response body if PlaybackInfo and forced
         if is_playback_info and should_force and resp.status_code == 200:
             resp_body = await resp.aread()
             await resp.aclose()
@@ -168,7 +156,6 @@ async def reverse_proxy_handler(request: Request) -> Response:
                 media_type=resp.headers.get("content-type")
             )
 
-        # Otherwise stream downstream response directly
         out_headers = dict(resp.headers)
         out_headers.pop("content-length", None)
         out_headers.pop("transfer-encoding", None)
@@ -180,5 +167,14 @@ async def reverse_proxy_handler(request: Request) -> Response:
             background=None
         )
     except Exception as e:
-        logger.error(f"Error proxying request to {url}: {e}")
+        logger.error(f"[{server_name} Proxy] Error proxying request to {url}: {e}")
         return Response(content=f"BlackBarr Proxy Error: {str(e)}", status_code=502)
+
+async def reverse_proxy_handler(request: Request) -> Response:
+    default_jellyfin = os.getenv("TARGET_SERVER_URL", "http://localhost:8096")
+    return await proxy_to_target(request, default_jellyfin, "target_server_url", "Jellyfin")
+
+async def reverse_proxy_emby_handler(request: Request) -> Response:
+    default_emby = os.getenv("TARGET_EMBY_URL", "http://localhost:8096")
+    return await proxy_to_target(request, default_emby, "target_emby_url", "Emby")
+
