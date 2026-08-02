@@ -39,7 +39,21 @@ CROP_VAL=""
 # Extract input file path from arguments (-i <filepath>)
 for ((i=0; i<${#ARGS[@]}; i++)); do
     if [[ "${ARGS[i]}" == "-i" ]] && (( i + 1 < ${#ARGS[@]} )); then
-        INPUT_FILE="${ARGS[i+1]}"
+        RAW_INPUT="${ARGS[i+1]}"
+        
+        # Strip 'file:' prefix if present
+        if [[ "$RAW_INPUT" == file:* ]]; then
+            RAW_INPUT="${RAW_INPUT#file:}"
+        fi
+        
+        # Strip surrounding double and single quotes
+        RAW_INPUT="${RAW_INPUT%\"}"
+        RAW_INPUT="${RAW_INPUT#\"}"
+        RAW_INPUT="${RAW_INPUT%\'}"
+        RAW_INPUT="${RAW_INPUT#\'}"
+
+        INPUT_FILE="$RAW_INPUT"
+
         # If it's a media file (not pipe or stream URL), save it
         if [[ -f "$INPUT_FILE" ]]; then
             break
