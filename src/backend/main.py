@@ -51,35 +51,53 @@ async def lifespan(app: FastAPI):
     loop_task.cancel()
     logger.info("BlackBarr server shutting down.")
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # Dedicated FastAPI app for Web UI & Management REST API (Port 6795)
 app = FastAPI(title="BlackBarr Management Dashboard", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(api_router)
 
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend"))
 
-@app.get("/", include_in_schema=False)
-@app.get("/ui", include_in_schema=False)
-@app.get("/ui/{file_path:path}", include_in_schema=False)
-async def serve_ui_root(file_path: str = ""):
-    if not file_path or file_path == "/":
-        file_path = "index.html"
-    target = os.path.join(FRONTEND_DIR, file_path)
-    if os.path.exists(target) and os.path.isfile(target):
-        return FileResponse(target)
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
-
 @app.middleware("http")
 async def web_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return Response(status_code=200)
+
     path = request.url.path
-    if path.startswith("/api") or path in ["/", "/index.html", "/app.js", "/style.css", "/favicon.ico"] or path.startswith("/ui"):
-        target = os.path.join(FRONTEND_DIR, path.lstrip("/"))
-        if os.path.exists(target) and os.path.isfile(target):
-            return FileResponse(target)
+    if path.startswith("/api"):
         return await call_next(request)
+
+    file_name = path.lstrip("/")
+    if not file_name or file_name == "ui" or path.startswith("/ui"):
+        file_name = "index.html"
+
+    target = os.path.join(FRONTEND_DIR, file_name)
+    if os.path.exists(target) and os.path.isfile(target):
+        return FileResponse(target)
+
+    index_file = os.path.join(FRONTEND_DIR, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+
     return await call_next(request)
 
 # Dedicated FastAPI app for Jellyfin Proxy (Port 6796)
 jf_app = FastAPI(title="BlackBarr Dedicated Jellyfin Proxy")
+jf_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @jf_app.middleware("http")
 async def jf_routing_middleware(request: Request, call_next):
@@ -87,6 +105,13 @@ async def jf_routing_middleware(request: Request, call_next):
 
 # Dedicated FastAPI app for Emby Proxy (Port 6797)
 emby_app = FastAPI(title="BlackBarr Dedicated Emby Proxy")
+emby_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @emby_app.middleware("http")
 async def emby_routing_middleware(request: Request, call_next):

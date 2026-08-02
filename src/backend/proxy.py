@@ -92,6 +92,13 @@ def mutate_playback_info_response_payload(body_bytes: bytes) -> bytes:
         return body_bytes
 
 async def proxy_to_target(request: Request, default_target: str, config_key: str, server_name: str) -> Response:
+    path = request.url.path
+    if path == "/ui" or path.startswith("/ui/"):
+        web_port = os.getenv("PORT", os.getenv("WEB_PORT", "6795"))
+        host_header = request.headers.get("host", "").split(":")[0] or "localhost"
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=f"http://{host_header}:{web_port}/ui")
+
     configured_url = await get_config(config_key, default_target)
     if not configured_url:
         return Response(content=f"BlackBarr Proxy Error: {server_name} target URL not configured", status_code=502)
