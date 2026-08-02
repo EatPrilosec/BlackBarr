@@ -33,10 +33,13 @@ auto_inject_config() {
         fi
         echo "[BlackBarr] Copied wrapper script to $target_wrapper (owner: ${dir_uid_gid:-default})"
 
+        # Container path inside Jellyfin/Emby containers
+        local container_wrapper_path="/config/ffmpeg-wrapper.sh"
+
         # Auto-update encoding.xml or system.xml if present
         for config_file in "$target_dir/encoding.xml" "$target_dir/system.xml" "$target_dir/config/encoding.xml" "$target_dir/config/system.xml"; do
             if [ -f "$config_file" ]; then
-                echo "[BlackBarr] Updating $config_file..."
+                echo "[BlackBarr] Processing $config_file..."
                 
                 # Capture original file ownership and permissions mode
                 local file_uid_gid file_mode
@@ -49,9 +52,23 @@ auto_inject_config() {
                     echo "[BlackBarr] Backed up original config to ${config_file}.bak"
                 fi
 
-                # Update EncoderAppPath or FfmpegPath xml tags
-                sed -i 's|<EncoderAppPath>.*</EncoderAppPath>|<EncoderAppPath>'${target_wrapper}'</EncoderAppPath>|g' "$config_file" || true
-                sed -i 's|<FfmpegPath>.*</FfmpegPath>|<FfmpegPath>'${target_wrapper}'</FfmpegPath>|g' "$config_file" || true
+                # Update or insert EncoderAppPath XML tag
+                if grep -q "<EncoderAppPath>" "$config_file"; then
+                    sed -i 's|<EncoderAppPath>.*</EncoderAppPath>|<EncoderAppPath>'${container_wrapper_path}'</EncoderAppPath>|g' "$config_file" || true
+                elif grep -q "</EncodingOptions>" "$config_file"; then
+                    sed -i 's|</EncodingOptions>|  <EncoderAppPath>'${container_wrapper_path}'</EncoderAppPath>\n</EncodingOptions>|g' "$config_file" || true
+                elif grep -q "</ServerConfiguration>" "$config_file"; then
+                    sed -i 's|</ServerConfiguration>|  <EncoderAppPath>'${container_wrapper_path}'</EncoderAppPath>\n</ServerConfiguration>|g' "$config_file" || true
+                fi
+
+                # Update or insert FfmpegPath XML tag
+                if grep -q "<FfmpegPath>" "$config_file"; then
+                    sed -i 's|<FfmpegPath>.*</FfmpegPath>|<FfmpegPath>'${container_wrapper_path}'</FfmpegPath>|g' "$config_file" || true
+                elif grep -q "</ServerConfiguration>" "$config_file"; then
+                    sed -i 's|</ServerConfiguration>|  <FfmpegPath>'${container_wrapper_path}'</FfmpegPath>\n</ServerConfiguration>|g' "$config_file" || true
+                elif grep -q "</EncodingOptions>" "$config_file"; then
+                    sed -i 's|</EncodingOptions>|  <FfmpegPath>'${container_wrapper_path}'</FfmpegPath>\n</EncodingOptions>|g' "$config_file" || true
+                fi
 
                 # Restore original ownership and permissions mode after sed edit
                 if [ -n "$file_uid_gid" ]; then
@@ -61,7 +78,7 @@ auto_inject_config() {
                     chmod "$file_mode" "$config_file" 2>/dev/null || true
                 fi
 
-                echo "[BlackBarr] Successfully updated $config_file (owner: ${file_uid_gid:-default}, mode: ${file_mode:-default})"
+                echo "[BlackBarr] Successfully updated $config_file -> $container_wrapper_path (owner: ${file_uid_gid:-default}, mode: ${file_mode:-default})"
             fi
         done
     fi
