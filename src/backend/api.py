@@ -71,13 +71,60 @@ async def get_media_list(
         "sort_order": sort_order
     }
 
+class ScanRequestModel(BaseModel):
+    mode: str = "new"  # "new", "full", "selected", "filtered"
+    media_ids: Optional[List[int]] = None
+    search: Optional[str] = ""
+    status: Optional[str] = ""
+    is_hdr: Optional[bool] = None
+
 @router.post("/scan")
-async def trigger_scan(background_tasks: BackgroundTasks, force: bool = Query(False)):
+async def trigger_scan(
+    background_tasks: BackgroundTasks, 
+    payload: Optional[ScanRequestModel] = None,
+    force: bool = Query(False)
+):
     if scanner_instance.is_scanning:
         raise HTTPException(status_code=400, detail="Scan is already in progress")
     
+    if payload:
+        if payload.mode == "selected" and payload.media_ids:
+            background_tasks.add_task(scanner_instance.scan_items_by_ids, payload.media_ids)
+            return {"message": f"Rescan initiated for {len(payload.media_ids)} items", "mode": "selected"}
+        elif payload.mode == "filtered":
+            background_tasks.add_task(
+                scanner_instance.scan_by_filter, 
+                search=payload.search or "", 
+                status=payload.status or "", 
+                is_hdr=payload.is_hdr
+            )
+            return {"message": "Filtered library rescan initiated", "mode": "filtered"}
+        elif payload.mode == "full":
+            background_tasks.add_task(scanner_instance.run_scan, force=True)
+            return {"message": "Full library rescan initiated", "mode": "full"}
+        else:
+            background_tasks.add_task(scanner_instance.run_scan, force=False)
+            return {"message": "Library scan for new/changed files initiated", "mode": "new"}
+    
+    # Fallback for query param (backward compatibility)
     background_tasks.add_task(scanner_instance.run_scan, force=force)
     return {"message": "Library scan initiated", "force": force}
+
+@router.post("/media/{media_id}/rescan")
+async def rescan_single_media_item(media_id: int):
+    async with get_db() as db:
+        async with db.execute("SELECT file_path FROM media_files WHERE id = ?", (media_id,)) as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Media item not found")
+            file_path = row["file_path"]
+
+    await scanner_instance.scan_file(file_path, force=True)
+
+    async with get_db() as db:
+        async with db.execute("SELECT * FROM media_files WHERE id = ?", (media_id,)) as cursor:
+            updated_row = await cursor.fetchone()
+            return {"message": "Media item rescanned successfully", "item": dict(updated_row)}
 
 @router.get("/scan/status")
 async def get_scan_status():

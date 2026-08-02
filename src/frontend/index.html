@@ -88,10 +88,37 @@
                 </div>
 
                 <!-- Actions -->
-                <button id="btnTriggerScan" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-medium text-xs shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-95">
-                    <i data-lucide="scan" class="w-4 h-4"></i>
-                    <span>Run Scan</span>
-                </button>
+                <div class="relative inline-block text-left">
+                    <div class="flex items-center rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 shadow-lg shadow-indigo-600/25">
+                        <button id="btnTriggerScan" class="flex items-center gap-2 px-4 py-2 text-white font-medium text-xs hover:from-indigo-500 hover:to-indigo-600 transition-all active:scale-95">
+                            <i data-lucide="scan" class="w-4 h-4"></i>
+                            <span id="scanBtnLabel">Run Scan</span>
+                        </button>
+                        <button id="btnScanDropdownToggle" class="px-2 py-2 text-indigo-200 hover:text-white border-l border-indigo-500/40 transition-all">
+                            <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Dropdown Menu -->
+                    <div id="scanDropdownMenu" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-dark-card border border-slate-800 shadow-2xl py-1 z-50 divide-y divide-slate-800/80">
+                        <div class="py-1">
+                            <button onclick="triggerScanMode('new')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                                <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-indigo-400"></i>
+                                <span>Scan New Files</span>
+                            </button>
+                            <button onclick="triggerScanMode('full')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-amber-400"></i>
+                                <span>Force Full Rescan</span>
+                            </button>
+                        </div>
+                        <div class="py-1">
+                            <button onclick="triggerScanMode('filtered')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                                <i data-lucide="filter" class="w-3.5 h-3.5 text-emerald-400"></i>
+                                <span>Rescan Current Filter</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <button id="btnOpenSettings" class="p-2 rounded-xl bg-dark-card border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-all">
                     <i data-lucide="settings" class="w-4 h-4"></i>
@@ -223,11 +250,31 @@
                 </div>
             </div>
 
+            <!-- Batch Actions Floating Bar -->
+            <div id="batchActionBar" class="hidden px-6 py-3 bg-indigo-950/70 border-b border-indigo-500/30 flex items-center justify-between text-xs font-medium text-indigo-200">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="check-square" class="w-4 h-4 text-indigo-400"></i>
+                    <span id="batchSelectedCount">0 items selected</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="btnBatchRescan" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md transition-all">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Rescan Selected</span>
+                    </button>
+                    <button id="btnClearSelection" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all">
+                        Clear Selection
+                    </button>
+                </div>
+            </div>
+
             <!-- Table Area -->
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm text-slate-300">
                     <thead class="bg-slate-900/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 select-none">
                         <tr>
+                            <th class="py-3.5 px-4 w-10 text-center">
+                                <input type="checkbox" id="selectAllCheckbox" class="rounded border-slate-700 bg-dark-base text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                            </th>
                             <th class="py-3.5 px-6 cursor-pointer hover:text-white transition-colors" data-sort="file_path">
                                 <div class="flex items-center gap-1.5">
                                     <span>File Path</span>

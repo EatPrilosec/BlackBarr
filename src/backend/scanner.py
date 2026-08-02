@@ -248,6 +248,63 @@ class CropScanner:
         self.current_file = ""
         logger.info("Library scan finished.")
 
+    async def scan_items_by_ids(self, media_ids: List[int]):
+        if self.is_scanning:
+            logger.warning("Scan already in progress.")
+            return
+
+        from database import get_db
+        async with get_db() as db:
+            placeholders = ",".join(["?"] * len(media_ids))
+            async with db.execute(f"SELECT file_path FROM media_files WHERE id IN ({placeholders})", media_ids) as cursor:
+                rows = await cursor.fetchall()
+                file_paths = [r["file_path"] for r in rows]
+
+        if not file_paths:
+            return
+
+        self.is_scanning = True
+        self.scanned_files = 0
+        self.total_files = len(file_paths)
+        logger.info(f"Starting targeted scan for {self.total_files} items.")
+
+        for fpath in file_paths:
+            if self._stop_event.is_set():
+                break
+            await self.scan_file(fpath, force=True)
+            self.scanned_files += 1
+
+        self.is_scanning = False
+        self.current_file = ""
+        logger.info("Targeted ID scan finished.")
+
+    async def scan_by_filter(self, search: str = "", status: str = "", is_hdr: Optional[bool] = None):
+        if self.is_scanning:
+            logger.warning("Scan already in progress.")
+            return
+
+        from database import list_media
+        items, total = await list_media(search=search, status=status, is_hdr=is_hdr, limit=10000, offset=0)
+        file_paths = [item["file_path"] for item in items]
+
+        if not file_paths:
+            return
+
+        self.is_scanning = True
+        self.scanned_files = 0
+        self.total_files = len(file_paths)
+        logger.info(f"Starting filtered scan for {self.total_files} items.")
+
+        for fpath in file_paths:
+            if self._stop_event.is_set():
+                break
+            await self.scan_file(fpath, force=True)
+            self.scanned_files += 1
+
+        self.is_scanning = False
+        self.current_file = ""
+        logger.info("Filtered scan finished.")
+
 
     def get_progress(self) -> Dict[str, Any]:
         return {

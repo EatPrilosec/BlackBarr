@@ -8,6 +8,8 @@ let scanStatusInterval = null;
 let currentSortBy = 'updated_at';
 let currentSortOrder = 'desc';
 
+let selectedMediaIds = new Set();
+
 document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
     initApp();
@@ -81,21 +83,71 @@ function setupEventListeners() {
         }
     });
 
-    // Run Scan Button
-    document.getElementById('btnTriggerScan').addEventListener('click', async () => {
+    // Primary Run Scan Button (Default: Scan New Files)
+    document.getElementById('btnTriggerScan').addEventListener('click', () => {
+        triggerScanMode('new');
+    });
+
+    // Scan Dropdown Toggle
+    const dropdownToggle = document.getElementById('btnScanDropdownToggle');
+    const dropdownMenu = document.getElementById('scanDropdownMenu');
+    
+    if (dropdownToggle && dropdownMenu) {
+        dropdownToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdownMenu.contains(e.target) && e.target !== dropdownToggle) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Table Select All Checkbox
+    const selectAllCb = document.getElementById('selectAllCheckbox');
+    if (selectAllCb) {
+        selectAllCb.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.row-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+                const id = parseInt(cb.getAttribute('data-id'));
+                if (isChecked) {
+                    selectedMediaIds.add(id);
+                } else {
+                    selectedMediaIds.delete(id);
+                }
+            });
+            updateBatchActionBar();
+        });
+    }
+
+    // Batch Rescan Selected Button
+    document.getElementById('btnBatchRescan').addEventListener('click', async () => {
+        if (selectedMediaIds.size === 0) return;
         try {
-            const resp = await fetch('/api/scan?force=false', { method: 'POST' });
+            const ids = Array.from(selectedMediaIds);
+            const resp = await fetch('/api/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'selected', media_ids: ids })
+            });
             if (resp.ok) {
-                showToast('Library scan initiated', 'success');
+                showToast(`Rescan initiated for ${ids.length} selected items`, 'success');
+                clearSelection();
                 startScanStatusPolling();
             } else {
                 const data = await resp.json();
-                showToast(data.detail || 'Scan trigger failed', 'warning');
+                showToast(data.detail || 'Batch rescan failed', 'warning');
             }
         } catch (err) {
-            showToast('Error triggering scan', 'error');
+            showToast('Error triggering batch rescan', 'error');
         }
     });
+
+    // Clear Selection Button
+    document.getElementById('btnClearSelection').addEventListener('click', clearSelection);
 
     // Pagination
     document.getElementById('btnPrevPage').addEventListener('click', () => {
@@ -137,81 +189,102 @@ function setupEventListeners() {
     });
 }
 
-async function loadStats() {
-    try {
-        const resp = await fetch('/api/stats');
-        if (!resp.ok) return;
-        const stats = await resp.json();
+async function triggerScanMode(mode) {
+    const dropdownMenu = document.getElementById('scanDropdownMenu');
+    if (dropdownMenu) dropdownMenu.classList.add('hidden');
 
-        document.getElementById('statTotal').innerText = stats.total || 0;
-        document.getElementById('statCropped').innerText = stats.cropped || 0;
-        document.getElementById('statNoBlackBars').innerText = stats.no_black_bars || 0;
-        document.getElementById('statPending').innerText = stats.pending || 0;
-        document.getElementById('statError').innerText = stats.error || 0;
+    try {
+        let payload = { mode: mode };
+        if (mode === 'filtered') {
+            payload.search = document.getElementById('searchInput').value.trim();
+            payload.status = document.getElementById('statusFilter').value;
+            const fmt = document.getElementById('formatFilter').value;
+            if (fmt === 'hdr') payload.is_hdr = true;
+            if (fmt === 'sdr') payload.is_hdr = false;
+        }
+
+        const resp = await fetch('/api/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (resp.ok) {
+            const data = await resp.json();
+            showToast(data.message || 'Scan initiated', 'success');
+            startScanStatusPolling();
+        } else {
+            const data = await resp.json();
+            showToast(data.detail || 'Scan trigger failed', 'warning');
+        }
     } catch (err) {
-        console.error("Error loading stats:", err);
+        showToast('Error triggering scan', 'error');
     }
 }
 
-async function loadConfig() {
-    try {
-        const resp = await fetch('/api/config');
-        if (!resp.ok) return;
-        const config = await resp.json();
-
-        const forced = config.force_transcode_enabled === "true";
-        document.getElementById('forcedTranscodeToggle').checked = forced;
-
-        document.getElementById('cfgTargetUrl').value = config.target_server_url || "http://localhost:8096";
-        document.getElementById('cfgTargetEmbyUrl').value = config.target_emby_url || "";
-        document.getElementById('cfgScanDirectories').value = config.scan_directories || "/media";
-        document.getElementById('cfgSdrLimit').value = config.sdr_crop_limit || "24";
-        document.getElementById('cfgHdrLimit').value = config.hdr_crop_limit || "0.05";
-        document.getElementById('cfgSampleCount').value = config.sample_count || "10";
-        document.getElementById('cfgScanInterval').value = config.scan_interval_minutes || "60";
-    } catch (err) {
-        console.error("Error loading configuration:", err);
-    }
-}
-
-async function loadMediaTable() {
-    const search = document.getElementById('searchInput').value.trim();
-    const status = document.getElementById('statusFilter').value;
-    const format = document.getElementById('formatFilter').value;
-    const offset = (currentPage - 1) * pageSize;
-
-    const tbody = document.getElementById('mediaTableBody');
+async function rescanSingleMediaItem(mediaId, event) {
+    if (event) event.stopPropagation();
     
+    const btn = document.getElementById(`btn-rescan-${mediaId}`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-indigo-400"></i>`;
+        lucide.createIcons();
+    }
+
     try {
-        const queryParams = {
-            search: search,
-            status: status,
-            sort_by: currentSortBy,
-            sort_order: currentSortOrder,
-            limit: pageSize,
-            offset: offset
-        };
-
-        if (format === 'hdr') queryParams.is_hdr = 'true';
-        if (format === 'sdr') queryParams.is_hdr = 'false';
-
-        const query = new URLSearchParams(queryParams);
-        const resp = await fetch(`/api/media?${query.toString()}`);
-        if (!resp.ok) throw new Error("Failed to load media items");
-        
-        const data = await resp.json();
-        totalItems = data.total;
-        renderMediaTable(data.items);
-        updatePaginationInfo();
+        const resp = await fetch(`/api/media/${mediaId}/rescan`, { method: 'POST' });
+        if (resp.ok) {
+            const data = await resp.json();
+            showToast('Item rescanned successfully', 'success');
+            await loadStats();
+            await loadMediaTable();
+        } else {
+            const data = await resp.json();
+            showToast(data.detail || 'Rescan failed', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>`;
+                lucide.createIcons();
+            }
+        }
     } catch (err) {
-        console.error("Error loading media table:", err);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="py-8 text-center text-rose-400">
-                    Failed to connect to BlackBarr API server.
-                </td>
-            </tr>
-        `;
+        showToast('Error rescanning item', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>`;
+            lucide.createIcons();
+        }
+    }
+}
+
+function handleRowCheckboxChange(id, isChecked) {
+    if (isChecked) {
+        selectedMediaIds.add(id);
+    } else {
+        selectedMediaIds.delete(id);
+    }
+    updateBatchActionBar();
+}
+
+function clearSelection() {
+    selectedMediaIds.clear();
+    const selectAllCb = document.getElementById('selectAllCheckbox');
+    if (selectAllCb) selectAllCb.checked = false;
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+    updateBatchActionBar();
+}
+
+function updateBatchActionBar() {
+    const bar = document.getElementById('batchActionBar');
+    const countSpan = document.getElementById('batchSelectedCount');
+    if (!bar || !countSpan) return;
+
+    if (selectedMediaIds.size > 0) {
+        countSpan.innerText = `${selectedMediaIds.size} item${selectedMediaIds.size > 1 ? 's' : ''} selected`;
+        bar.classList.remove('hidden');
+    } else {
+        bar.classList.add('hidden');
     }
 }
 
@@ -220,7 +293,7 @@ function renderMediaTable(items) {
     if (!items || items.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="py-12 text-center text-slate-500">
+                <td colspan="7" class="py-12 text-center text-slate-500">
                     No media files found matching current criteria.
                 </td>
             </tr>
@@ -263,8 +336,13 @@ function renderMediaTable(items) {
             ? `<code class="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-emerald-400 font-mono text-xs">${escapeHtml(item.crop_val)}</code>`
             : `<span class="text-slate-500 text-xs italic">Full Frame</span>`;
 
+        const isChecked = selectedMediaIds.has(item.id) ? 'checked' : '';
+
         return `
             <tr class="hover:bg-slate-900/50 transition-colors">
+                <td class="py-3.5 px-4 text-center">
+                    <input type="checkbox" data-id="${item.id}" class="row-checkbox rounded border-slate-700 bg-dark-base text-indigo-600 focus:ring-indigo-500 cursor-pointer" ${isChecked} onchange="handleRowCheckboxChange(${item.id}, this.checked)">
+                </td>
                 <td class="py-3.5 px-6 font-mono text-xs text-slate-200 break-all max-w-md">
                     ${escapeHtml(item.file_path)}
                 </td>
@@ -274,6 +352,9 @@ function renderMediaTable(items) {
                 <td class="py-3.5 px-4 text-xs text-slate-400">${item.updated_at || 'N/A'}</td>
                 <td class="py-3.5 px-6 text-right">
                     <div class="flex items-center justify-end gap-2">
+                        <button id="btn-rescan-${item.id}" onclick="rescanSingleMediaItem(${item.id}, event)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-900/40 text-slate-300 hover:text-indigo-400 transition-all" title="Rescan File">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        </button>
                         <button onclick="editMediaItem(${item.id})" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Edit Entry">
                             <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                         </button>
@@ -287,6 +368,7 @@ function renderMediaTable(items) {
     }).join('');
 
     lucide.createIcons();
+    updateBatchActionBar();
 }
 
 function updatePaginationInfo() {
