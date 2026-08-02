@@ -127,30 +127,43 @@ async def emby_websocket_route(websocket: WebSocket, path: str):
 async def emby_routing_middleware(request: Request, call_next):
     return await reverse_proxy_emby_handler(request)
 
+def make_dual_stack_socket(port: int):
+    import socket
+    sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+    except Exception:
+        pass
+    sock.bind(("::", port))
+    return sock
+
 async def start_servers():
     import uvicorn
     port_web = int(os.getenv("PORT", os.getenv("WEB_PORT", "6795")))
     port_jf = int(os.getenv("JELLYFIN_PORT", "6796"))
     port_emby = int(os.getenv("EMBY_PORT", "6797"))
 
-    bind_host = os.getenv("BIND_HOST", "::")
-
-    config_web = uvicorn.Config(app, host=bind_host, port=port_web, log_level="info")
-    config_jf = uvicorn.Config(jf_app, host=bind_host, port=port_jf, log_level="info")
-    config_emby = uvicorn.Config(emby_app, host=bind_host, port=port_emby, log_level="info")
+    config_web = uvicorn.Config(app, log_level="info")
+    config_jf = uvicorn.Config(jf_app, log_level="info")
+    config_emby = uvicorn.Config(emby_app, log_level="info")
 
     server_web = uvicorn.Server(config_web)
     server_jf = uvicorn.Server(config_jf)
     server_emby = uvicorn.Server(config_emby)
 
-    logger.info(f"Starting BlackBarr Web Management UI on port {port_web}")
-    logger.info(f"Starting BlackBarr Dedicated Jellyfin Proxy on port {port_jf}")
-    logger.info(f"Starting BlackBarr Dedicated Emby Proxy on port {port_emby}")
+    sock_web = make_dual_stack_socket(port_web)
+    sock_jf = make_dual_stack_socket(port_jf)
+    sock_emby = make_dual_stack_socket(port_emby)
+
+    logger.info(f"Starting BlackBarr Web Management UI on port {port_web} (Dual-Stack IPv4/IPv6)")
+    logger.info(f"Starting BlackBarr Dedicated Jellyfin Proxy on port {port_jf} (Dual-Stack IPv4/IPv6)")
+    logger.info(f"Starting BlackBarr Dedicated Emby Proxy on port {port_emby} (Dual-Stack IPv4/IPv6)")
 
     await asyncio.gather(
-        server_web.serve(),
-        server_jf.serve(),
-        server_emby.serve()
+        server_web.serve(sockets=[sock_web]),
+        server_jf.serve(sockets=[sock_jf]),
+        server_emby.serve(sockets=[sock_emby])
     )
 
 if __name__ == "__main__":
