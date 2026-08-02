@@ -49,6 +49,7 @@ services:
       - "6788:6788"
     environment:
       - TARGET_SERVER_URL=http://jellyfin:8096
+      - TARGET_EMBY_URL=http://emby:8096
       - PORT=6788
       - SCAN_DIRECTORIES=/media/movies, /media/tv
       - BLACKBARR_DB_PATH=/config/BlackBarr.db
@@ -56,8 +57,9 @@ services:
       - ./blackbarr-config:/config
       - /path/to/movies:/media/movies:ro
       - /path/to/tv:/media/tv:ro
-      # Optional: Auto-inject wrapper into Jellyfin configuration volume before Jellyfin starts
+      # Auto-inject wrapper script into both Jellyfin and Emby config volumes
       - /path/to/jellyfin/config:/target-jellyfin-config:rw
+      - /path/to/emby/config:/target-emby-config:rw
 
   jellyfin:
     image: jellyfin/jellyfin:latest
@@ -67,6 +69,19 @@ services:
       - "8096:8096"
     volumes:
       - /path/to/jellyfin/config:/config
+      - /path/to/movies:/media/movies:ro
+      - /path/to/tv:/media/tv:ro
+    depends_on:
+      - blackbarr
+
+  emby:
+    image: emby/embyserver:latest
+    container_name: emby
+    restart: unless-stopped
+    ports:
+      - "8097:8096"
+    volumes:
+      - /path/to/emby/config:/config
       - /path/to/movies:/media/movies:ro
       - /path/to/tv:/media/tv:ro
     depends_on:
@@ -86,7 +101,8 @@ Access the BlackBarr Management UI at: `http://localhost:6788/ui`
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `TARGET_SERVER_URL` | `http://localhost:8096` | Downstream Jellyfin or Emby server URL |
+| `TARGET_SERVER_URL` | `http://localhost:8096` | Downstream Jellyfin (or primary Emby) server URL |
+| `TARGET_EMBY_URL` | `""` | Optional secondary Emby server URL for simultaneous dual-server routing |
 | `PORT` | `6788` | Port for BlackBarr proxy & REST API |
 | `SCAN_DIRECTORIES` | `/media` | Comma-separated list of mounted media directories (configurable via Web UI) |
 | `BLACKBARR_DB_PATH` | `/config/BlackBarr.db` | SQLite database file location |

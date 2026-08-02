@@ -92,7 +92,16 @@ def mutate_playback_info_response_payload(body_bytes: bytes) -> bytes:
         return body_bytes
 
 async def reverse_proxy_handler(request: Request) -> Response:
-    target_server = await get_config("target_server_url", os.getenv("TARGET_SERVER_URL", "http://localhost:8096"))
+    primary_target = await get_config("target_server_url", os.getenv("TARGET_SERVER_URL", "http://localhost:8096"))
+    emby_target = await get_config("target_emby_url", os.getenv("TARGET_EMBY_URL", ""))
+    
+    target_server = primary_target
+    if emby_target:
+        headers_lower = {k.lower(): v for k, v in request.headers.items()}
+        user_agent = headers_lower.get("user-agent", "").lower()
+        if "x-emby-authorization" in headers_lower or "emby" in user_agent or request.url.path.startswith("/emby"):
+            target_server = emby_target
+
     target_server = target_server.rstrip("/")
     
     url = f"{target_server}{request.url.path}"

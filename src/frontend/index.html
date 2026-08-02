@@ -312,8 +312,13 @@
             
             <form id="settingsForm" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target Jellyfin/Emby URL</label>
-                    <input type="text" id="cfgTargetUrl" required class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target Jellyfin Server URL</label>
+                    <input type="text" id="cfgTargetUrl" placeholder="http://jellyfin:8096" required class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target Emby Server URL (Optional for Dual Setup)</label>
+                    <input type="text" id="cfgTargetEmbyUrl" placeholder="http://emby:8096" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                 </div>
 
                 <div>

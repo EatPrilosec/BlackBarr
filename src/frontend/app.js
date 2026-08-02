@@ -130,6 +130,7 @@ async function loadConfig() {
         document.getElementById('forcedTranscodeToggle').checked = forced;
 
         document.getElementById('cfgTargetUrl').value = config.target_server_url || "http://localhost:8096";
+        document.getElementById('cfgTargetEmbyUrl').value = config.target_emby_url || "";
         document.getElementById('cfgScanDirectories').value = config.scan_directories || "/media";
         document.getElementById('cfgSdrLimit').value = config.sdr_crop_limit || "24";
         document.getElementById('cfgHdrLimit').value = config.hdr_crop_limit || "0.05";
@@ -387,6 +388,7 @@ async function handleSettingsSubmit(e) {
     e.preventDefault();
     const configs = {
         target_server_url: document.getElementById('cfgTargetUrl').value.trim(),
+        target_emby_url: document.getElementById('cfgTargetEmbyUrl').value.trim(),
         scan_directories: document.getElementById('cfgScanDirectories').value.trim(),
         sdr_crop_limit: document.getElementById('cfgSdrLimit').value.trim(),
         hdr_crop_limit: document.getElementById('cfgHdrLimit').value.trim(),

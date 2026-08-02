@@ -56,6 +56,7 @@ async def init_db():
         defaults = {
             "force_transcode_enabled": "true",
             "target_server_url": os.getenv("TARGET_SERVER_URL", "http://localhost:8096"),
+            "target_emby_url": os.getenv("TARGET_EMBY_URL", ""),
             "scan_directories": os.getenv("SCAN_DIRECTORIES", os.getenv("MEDIA_DIR", "/media")),
             "sdr_crop_limit": "24",
             "hdr_crop_limit": "0.05",

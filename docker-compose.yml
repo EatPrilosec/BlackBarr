@@ -11,6 +11,7 @@ services:
       - "6788:6788"
     environment:
       - TARGET_SERVER_URL=http://jellyfin:8096
+      - TARGET_EMBY_URL=http://emby:8096
       - PORT=6788
       - SCAN_DIRECTORIES=/media/movies, /media/tv
       - BLACKBARR_DB_PATH=/config/BlackBarr.db
@@ -18,8 +19,9 @@ services:
       - ./config:/config
       - /path/to/movies:/media/movies:ro
       - /path/to/tv:/media/tv:ro
-      # Optional: Mount target Jellyfin/Emby server config folder to enable auto-injection of ffmpeg-wrapper
+      # Auto-inject ffmpeg-wrapper into both Jellyfin and Emby config volumes
       - /path/to/jellyfin/config:/target-jellyfin-config:rw
+      - /path/to/emby/config:/target-emby-config:rw
 
   jellyfin:
     image: jellyfin/jellyfin:latest
@@ -29,6 +31,19 @@ services:
       - "8096:8096"
     volumes:
       - /path/to/jellyfin/config:/config
+      - /path/to/movies:/media/movies:ro
+      - /path/to/tv:/media/tv:ro
+    depends_on:
+      - blackbarr
+
+  emby:
+    image: emby/embyserver:latest
+    container_name: emby
+    restart: unless-stopped
+    ports:
+      - "8097:8096"
+    volumes:
+      - /path/to/emby/config:/config
       - /path/to/movies:/media/movies:ro
       - /path/to/tv:/media/tv:ro
     depends_on:
