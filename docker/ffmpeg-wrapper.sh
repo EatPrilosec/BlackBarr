@@ -63,8 +63,8 @@ done
 
 # If input file was found, query BlackBarr API for crop value
 if [[ -n "$INPUT_FILE" ]] && command -v curl >/dev/null 2>&1; then
-    # Try localhost first (host networking), then blackbarr (bridge networking)
-    RES=$(curl -G -s --data-urlencode "path=$INPUT_FILE" "http://localhost:6795/api/crop_val" || curl -G -s --data-urlencode "path=$INPUT_FILE" "http://blackbarr:6795/api/crop_val" || true)
+    # Try 127.0.0.1 IPv4 loopback first, then localhost, then blackbarr bridge network
+    RES=$(curl -G -s --data-urlencode "path=$INPUT_FILE" "http://127.0.0.1:6795/api/crop_val" || curl -G -s --data-urlencode "path=$INPUT_FILE" "http://localhost:6795/api/crop_val" || curl -G -s --data-urlencode "path=$INPUT_FILE" "http://blackbarr:6795/api/crop_val" || true)
     CROP_VAL=$(echo "$RES" | grep -o 'crop=[^"]*' || true)
 fi
 
