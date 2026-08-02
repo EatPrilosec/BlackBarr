@@ -3,6 +3,7 @@ import aiosqlite
 import logging
 import time
 from contextlib import asynccontextmanager
+from typing import Optional, List, Tuple, Dict, Any
 
 logger = logging.getLogger("blackbarr.database")
 
