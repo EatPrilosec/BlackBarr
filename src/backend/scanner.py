@@ -154,9 +154,8 @@ class CropScanner:
         most_common_crop, count = counter.most_common(1)[0]
         w, h, x, y = most_common_crop
 
-        # Check if crop is virtually full frame or starts at (0,0) with no top/left letterboxing
-        if (abs(w - orig_w) <= 8 and abs(h - orig_h) <= 8) or (x <= 4 and y <= 4):
-            # No letterbox/pillarbox offsets detected (already active picture or container-cropped)
+        # Check if crop is virtually full frame (no significant letterboxing or pillarboxing detected)
+        if abs(w - orig_w) <= 8 and abs(h - orig_h) <= 8:
             return None, is_hdr, "PROCESSED"
         else:
             crop_str = f"{w}:{h}:{x}:{y}"
