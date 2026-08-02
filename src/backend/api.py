@@ -130,6 +130,13 @@ async def rescan_single_media_item(media_id: int):
 async def get_scan_status():
     return scanner_instance.get_progress()
 
+@router.post("/scan/stop")
+async def stop_running_scan():
+    if not scanner_instance.is_scanning:
+        return {"message": "No scan is currently running"}
+    scanner_instance.stop_scan()
+    return {"message": "Scan cancellation requested"}
+
 @router.put("/media/{media_id}")
 async def update_media_item(media_id: int, payload: MediaItemUpdateModel):
     async with get_db() as db:

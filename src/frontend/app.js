@@ -272,6 +272,21 @@ async function loadMediaTable() {
     }
 }
 
+async function stopCurrentScan(event) {
+    if (event) event.stopPropagation();
+    try {
+        const resp = await fetch('/api/scan/stop', { method: 'POST' });
+        if (resp.ok) {
+            const data = await resp.json();
+            showToast(data.message || 'Scan cancellation requested', 'info');
+        } else {
+            showToast('Failed to stop scan', 'warning');
+        }
+    } catch (err) {
+        showToast('Error stopping scan', 'error');
+    }
+}
+
 async function triggerScanMode(mode) {
     const dropdownMenu = document.getElementById('scanDropdownMenu');
     if (dropdownMenu) dropdownMenu.classList.add('hidden');

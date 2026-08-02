@@ -219,6 +219,7 @@ class CropScanner:
             from database import get_scan_directories
             directories = await get_scan_directories()
 
+        self._stop_event.clear()
         self.is_scanning = True
         self.scanned_files = 0
         self.total_files = 0
@@ -240,6 +241,7 @@ class CropScanner:
 
         for fpath in video_files:
             if self._stop_event.is_set():
+                logger.info("Scan stopped by user request.")
                 break
             await self.scan_file(fpath, force=force)
             self.scanned_files += 1
@@ -263,6 +265,7 @@ class CropScanner:
         if not file_paths:
             return
 
+        self._stop_event.clear()
         self.is_scanning = True
         self.scanned_files = 0
         self.total_files = len(file_paths)
@@ -270,6 +273,7 @@ class CropScanner:
 
         for fpath in file_paths:
             if self._stop_event.is_set():
+                logger.info("Targeted ID scan stopped by user request.")
                 break
             await self.scan_file(fpath, force=True)
             self.scanned_files += 1
@@ -290,6 +294,7 @@ class CropScanner:
         if not file_paths:
             return
 
+        self._stop_event.clear()
         self.is_scanning = True
         self.scanned_files = 0
         self.total_files = len(file_paths)
@@ -297,6 +302,7 @@ class CropScanner:
 
         for fpath in file_paths:
             if self._stop_event.is_set():
+                logger.info("Filtered scan stopped by user request.")
                 break
             await self.scan_file(fpath, force=True)
             self.scanned_files += 1
@@ -304,6 +310,11 @@ class CropScanner:
         self.is_scanning = False
         self.current_file = ""
         logger.info("Filtered scan finished.")
+
+    def stop_scan(self):
+        if self.is_scanning:
+            self._stop_event.set()
+            logger.info("Scan cancellation event set.")
 
 
     def get_progress(self) -> Dict[str, Any]:
