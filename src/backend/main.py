@@ -51,19 +51,16 @@ async def lifespan(app: FastAPI):
     loop_task.cancel()
     logger.info("BlackBarr server shutting down.")
 
-app = FastAPI(title="BlackBarr Media Pipeline Middleware", lifespan=lifespan)
-
-# Mount API routes
+# Dedicated FastAPI app for Web UI & Management REST API (Port 6795)
+app = FastAPI(title="BlackBarr Management Dashboard", lifespan=lifespan)
 app.include_router(api_router)
 
-# Locate frontend directory
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
-FRONTEND_DIR = os.path.abspath(FRONTEND_DIR)
+FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend"))
 
-# Static file serving route helper
+@app.get("/", include_in_schema=False)
 @app.get("/ui", include_in_schema=False)
 @app.get("/ui/{file_path:path}", include_in_schema=False)
-async def serve_ui(file_path: str = ""):
+async def serve_ui_root(file_path: str = ""):
     if not file_path or file_path == "/":
         file_path = "index.html"
     target = os.path.join(FRONTEND_DIR, file_path)
@@ -72,34 +69,23 @@ async def serve_ui(file_path: str = ""):
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 @app.middleware("http")
-async def routing_middleware(request: Request, call_next):
+async def web_middleware(request: Request, call_next):
     path = request.url.path
-
-    # Allow API endpoints to pass directly to FastAPI router
-    if path.startswith("/api"):
-        return await call_next(request)
-
-    # Allow direct UI access on specific dashboard paths
-    if path in ["/", "/index.html", "/app.js", "/style.css", "/favicon.ico"] or path.startswith("/ui"):
-        # If client explicitly asks for UI or root path without media server query/headers
-        if path == "/":
-            user_agent = request.headers.get("user-agent", "").lower()
-            # If request looks like Jellyfin/Emby client API call (e.g. /Items, /System/Info), proxy it
-            if "jellyfin" in user_agent or "emby" in user_agent or "media" in user_agent:
-                return await reverse_proxy_handler(request)
-            
-            target = os.path.join(FRONTEND_DIR, "index.html")
-            if os.path.exists(target):
-                return FileResponse(target)
-
+    if path.startswith("/api") or path in ["/", "/index.html", "/app.js", "/style.css", "/favicon.ico"] or path.startswith("/ui"):
         target = os.path.join(FRONTEND_DIR, path.lstrip("/"))
         if os.path.exists(target) and os.path.isfile(target):
             return FileResponse(target)
+        return await call_next(request)
+    return await call_next(request)
 
-    # Proxy all other Jellyfin requests
+# Dedicated FastAPI app for Jellyfin Proxy (Port 6796)
+jf_app = FastAPI(title="BlackBarr Dedicated Jellyfin Proxy")
+
+@jf_app.middleware("http")
+async def jf_routing_middleware(request: Request, call_next):
     return await reverse_proxy_handler(request)
 
-# Secondary FastAPI app for dedicated Emby Proxy on EMBY_PORT
+# Dedicated FastAPI app for Emby Proxy (Port 6797)
 emby_app = FastAPI(title="BlackBarr Dedicated Emby Proxy")
 
 @emby_app.middleware("http")
@@ -108,19 +94,24 @@ async def emby_routing_middleware(request: Request, call_next):
 
 async def start_servers():
     import uvicorn
-    port_jf = int(os.getenv("PORT", "6788"))
-    port_emby = int(os.getenv("EMBY_PORT", "6789"))
+    port_web = int(os.getenv("PORT", os.getenv("WEB_PORT", "6795")))
+    port_jf = int(os.getenv("JELLYFIN_PORT", "6796"))
+    port_emby = int(os.getenv("EMBY_PORT", "6797"))
 
-    config_jf = uvicorn.Config(app, host="0.0.0.0", port=port_jf, log_level="info")
+    config_web = uvicorn.Config(app, host="0.0.0.0", port=port_web, log_level="info")
+    config_jf = uvicorn.Config(jf_app, host="0.0.0.0", port=port_jf, log_level="info")
     config_emby = uvicorn.Config(emby_app, host="0.0.0.0", port=port_emby, log_level="info")
 
+    server_web = uvicorn.Server(config_web)
     server_jf = uvicorn.Server(config_jf)
     server_emby = uvicorn.Server(config_emby)
 
-    logger.info(f"Starting BlackBarr Jellyfin Proxy & UI on port {port_jf}")
+    logger.info(f"Starting BlackBarr Web Management UI on port {port_web}")
+    logger.info(f"Starting BlackBarr Dedicated Jellyfin Proxy on port {port_jf}")
     logger.info(f"Starting BlackBarr Dedicated Emby Proxy on port {port_emby}")
 
     await asyncio.gather(
+        server_web.serve(),
         server_jf.serve(),
         server_emby.serve()
     )

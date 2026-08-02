@@ -8,13 +8,15 @@ services:
     container_name: blackbarr
     restart: unless-stopped
     ports:
-      - "6788:6788"
-      - "6789:6789"
+      - "6795:6795"   # Management Web UI & REST API
+      - "6796:6796"   # Dedicated Jellyfin Reverse Proxy
+      - "6797:6797"   # Dedicated Emby Reverse Proxy
     environment:
       - TARGET_SERVER_URL=http://jellyfin:8096
       - TARGET_EMBY_URL=http://emby:8096
-      - PORT=6788
-      - EMBY_PORT=6789
+      - PORT=6795
+      - JELLYFIN_PORT=6796
+      - EMBY_PORT=6797
       - SCAN_DIRECTORIES=/media/movies, /media/tv
       - BLACKBARR_DB_PATH=/config/BlackBarr.db
     volumes:

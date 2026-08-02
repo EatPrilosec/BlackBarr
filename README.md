@@ -20,15 +20,23 @@
 
 ```mermaid
 flowchart TD
-    Client[Media Client / Web / TV App] -->|1. PlaybackInfo Request| Proxy[BlackBarr Reverse Proxy :6788]
-    Proxy -->|2. Queries Crop Status| DB[(SQLite DB /config/BlackBarr.db)]
-    Proxy -->|3. Mutates Payload if Cropped| Server[Jellyfin / Emby Server :8096]
-    Server -->|4. Invokes Encoder| Wrapper[ffmpeg-wrapper.sh]
-    Wrapper -->|5. Queries Crop Rect| DB
-    Wrapper -->|6. Injects -vf crop=w:h:x:y| FFmpeg[System FFmpeg Binary]
+    JFClient[Jellyfin Client] -->|PlaybackInfo Request| JFProxy[Jellyfin Proxy :6796]
+    EmbyClient[Emby Client] -->|PlaybackInfo Request| EmbyProxy[Emby Proxy :6797]
+    
+    JFProxy -->|Queries Crop Status| DB[(SQLite DB /config/BlackBarr.db)]
+    EmbyProxy -->|Queries Crop Status| DB
+
+    JFProxy -->|Mutates Payload if Cropped| JFServer[Jellyfin Server :8096]
+    EmbyProxy -->|Mutates Payload if Cropped| EmbyServer[Emby Server :8096]
+
+    JFServer -->|Invokes Encoder| Wrapper[ffmpeg-wrapper.sh]
+    EmbyServer -->|Invokes Encoder| Wrapper
+    
+    Wrapper -->|Queries Crop Rect| DB
+    Wrapper -->|Injects -vf crop=w:h:x:y| FFmpeg[System FFmpeg Binary]
     
     Scanner[Crop Scanner Engine] -->|Audits /media & cropdetect| DB
-    WebUI[Management Dashboard /ui] -->|REST API /api| DB
+    WebUI[Management Dashboard :6795] -->|REST API /api| DB
 ```
 
 ---
@@ -46,13 +54,15 @@ services:
     container_name: blackbarr
     restart: unless-stopped
     ports:
-      - "6788:6788"   # Jellyfin Proxy & Web Management UI
-      - "6789:6789"   # Dedicated Emby Proxy
+      - "6795:6795"   # Web Management UI & REST API
+      - "6796:6796"   # Dedicated Jellyfin Reverse Proxy
+      - "6797:6797"   # Dedicated Emby Reverse Proxy
     environment:
       - TARGET_SERVER_URL=http://jellyfin:8096
       - TARGET_EMBY_URL=http://emby:8096
-      - PORT=6788
-      - EMBY_PORT=6789
+      - PORT=6795
+      - JELLYFIN_PORT=6796
+      - EMBY_PORT=6797
       - SCAN_DIRECTORIES=/media/movies, /media/tv
       - BLACKBARR_DB_PATH=/config/BlackBarr.db
     volumes:
@@ -95,7 +105,7 @@ Run container:
 docker compose up -d
 ```
 
-Access the BlackBarr Management UI at: `http://localhost:6788/ui`
+Access the BlackBarr Management UI at: `http://localhost:6795/ui`
 
 ---
 
@@ -105,8 +115,9 @@ Access the BlackBarr Management UI at: `http://localhost:6788/ui`
 | :--- | :--- | :--- |
 | `TARGET_SERVER_URL` | `http://localhost:8096` | Downstream Jellyfin server URL |
 | `TARGET_EMBY_URL` | `""` | Downstream Emby server URL |
-| `PORT` | `6788` | Port for Jellyfin Reverse Proxy & Web Management UI |
-| `EMBY_PORT` | `6789` | Dedicated Port for Emby Reverse Proxy |
+| `PORT` / `WEB_PORT` | `6795` | Dedicated Port for Web Management UI & REST API |
+| `JELLYFIN_PORT` | `6796` | Dedicated Port for Jellyfin Reverse Proxy |
+| `EMBY_PORT` | `6797` | Dedicated Port for Emby Reverse Proxy |
 | `SCAN_DIRECTORIES` | `/media` | Comma-separated list of mounted media directories (configurable via Web UI) |
 | `BLACKBARR_DB_PATH` | `/config/BlackBarr.db` | SQLite database file location |
 
