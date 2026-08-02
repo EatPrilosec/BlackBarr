@@ -117,7 +117,17 @@ class CropScanner:
         if orig_w == 0 or orig_h == 0:
             return None, is_hdr, "ERROR"
 
-        limit = hdr_limit if is_hdr else sdr_limit
+        # Parse luma limit (e.g. if limit is 0.05 scale to 255 -> 13, else int)
+        def _format_limit(l_val: str) -> str:
+            try:
+                f = float(l_val)
+                if 0 < f < 1.0:
+                    return str(max(1, int(f * 255)))
+                return str(int(f))
+            except Exception:
+                return "24"
+
+        limit = _format_limit(hdr_limit if is_hdr else sdr_limit)
 
         # Sample timestamps starting at +5 minutes (300 seconds) if duration permits
         start_time = 300.0 if duration > 600.0 else (duration * 0.1)
@@ -144,9 +154,9 @@ class CropScanner:
         most_common_crop, count = counter.most_common(1)[0]
         w, h, x, y = most_common_crop
 
-        # Check if crop is virtually full frame (within 8px boundary)
-        if abs(w - orig_w) <= 8 and abs(h - orig_h) <= 8 and x <= 4 and y <= 4:
-            # Full frame, no crop needed
+        # Check if crop is virtually full frame or starts at (0,0) with no top/left letterboxing
+        if (abs(w - orig_w) <= 8 and abs(h - orig_h) <= 8) or (x <= 4 and y <= 4):
+            # No letterbox/pillarbox offsets detected (already active picture or container-cropped)
             return None, is_hdr, "PROCESSED"
         else:
             crop_str = f"{w}:{h}:{x}:{y}"
