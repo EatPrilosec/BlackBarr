@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  blackbarr:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: blackbarr
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - TARGET_SERVER_URL=http://jellyfin:8096
+      - PORT=8080
+      - MEDIA_DIR=/media
+      - BLACKBARR_DB_PATH=/config/BlackBarr.db
+    volumes:
+      - ./config:/config
+      - /path/to/your/media:/media:ro
+      # Optional: Mount target Jellyfin/Emby server config folder to enable auto-injection of ffmpeg-wrapper
+      - /path/to/jellyfin/config:/target-jellyfin-config:rw
+    depends_on:
+      - jellyfin
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    volumes:
+      - /path/to/jellyfin/config:/config
+      - /path/to/your/media:/media:ro

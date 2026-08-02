@@ -1,0 +1,175 @@
+import logging
+import json
+import os
+from typing import Optional
+from fastapi import Request, Response
+from fastapi.responses import StreamingResponse
+import httpx
+
+from database import get_config, get_media_by_path, get_db
+
+logger = logging.getLogger("blackbarr.proxy")
+
+client = httpx.AsyncClient(timeout=None, follow_redirects=True)
+
+async def check_item_requires_cropping(item_id: Optional[str] = None, file_path: Optional[str] = None) -> bool:
+    """
+    Checks if a media file associated with item_id or file_path requires dynamic cropping.
+    """
+    force_enabled = await get_config("force_transcode_enabled", "true")
+    if force_enabled.lower() != "true":
+        return False
+
+    if file_path:
+        item = await get_media_by_path(file_path)
+        if item and item.get("status") == "PROCESSED" and item.get("crop_val"):
+            return True
+        return False
+
+    # If item_id is given, we check if any entry in database has file_path containing item_id or query db
+    if item_id:
+        async with await get_db() as db:
+            async with db.execute(
+                "SELECT crop_val, status FROM media_files WHERE file_path LIKE ? OR file_path LIKE ?", 
+                (f"%{item_id}%", f"%/{item_id}.%")
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row and row["status"] == "PROCESSED" and row["crop_val"]:
+                    return True
+
+            # Alternatively, if there are any media files in DB with crop_val set, check if item matches
+            async with db.execute("SELECT file_path, crop_val FROM media_files WHERE status = 'PROCESSED' AND crop_val IS NOT NULL AND crop_val != ''") as cursor:
+                rows = await cursor.fetchall()
+                for row in rows:
+                    # Match filename stem with item_id if applicable
+                    base = os.path.basename(row["file_path"])
+                    if item_id in base:
+                        return True
+
+    return False
+
+def mutate_playback_info_request_payload(body_bytes: bytes) -> bytes:
+    """
+    Mutates incoming PlaybackInfo JSON payload to disable direct play/stream.
+    """
+    try:
+        data = json.loads(body_bytes.decode("utf-8"))
+        data["EnableDirectPlay"] = False
+        data["EnableDirectStream"] = False
+        data["EnableTranscoding"] = True
+        
+        # Restrict DirectPlay profiles in DeviceProfile if present
+        if "DeviceProfile" in data and isinstance(data["DeviceProfile"], dict):
+            dp = data["DeviceProfile"]
+            dp["DirectPlayProfiles"] = []
+        
+        return json.dumps(data).encode("utf-8")
+    except Exception as e:
+        logger.warning(f"Failed to parse or mutate incoming PlaybackInfo body: {e}")
+        return body_bytes
+
+def mutate_playback_info_response_payload(body_bytes: bytes) -> bytes:
+    """
+    Mutates outgoing PlaybackInfo JSON response to force Transcode play method.
+    """
+    try:
+        data = json.loads(body_bytes.decode("utf-8"))
+        
+        if "MediaSources" in data and isinstance(data["MediaSources"], list):
+            for ms in data["MediaSources"]:
+                ms["SupportsDirectPlay"] = False
+                ms["SupportsDirectStream"] = False
+                ms["SupportsTranscoding"] = True
+                ms["PlayMethod"] = "Transcode"
+                
+                # Clear direct stream URLs to prevent client direct playback bypass
+                if "DirectStreamUrl" in ms:
+                    ms["DirectStreamUrl"] = None
+
+        return json.dumps(data).encode("utf-8")
+    except Exception as e:
+        logger.warning(f"Failed to parse or mutate outgoing PlaybackInfo response: {e}")
+        return body_bytes
+
+async def reverse_proxy_handler(request: Request) -> Response:
+    target_server = await get_config("target_server_url", os.getenv("TARGET_SERVER_URL", "http://localhost:8096"))
+    target_server = target_server.rstrip("/")
+    
+    url = f"{target_server}{request.url.path}"
+    if request.url.query:
+        url += f"?{request.url.query}"
+
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    
+    body = await request.body()
+    
+    path = request.url.path
+    is_playback_info = "/PlaybackInfo" in path or "/Sessions" in path
+    
+    should_force = False
+    item_id = None
+    
+    if is_playback_info:
+        # Extract item ID from path like /Items/{Id}/PlaybackInfo
+        parts = path.strip("/").split("/")
+        if len(parts) >= 3 and parts[0] == "Items" and parts[2] == "PlaybackInfo":
+            item_id = parts[1]
+        
+        # Check query parameters for ItemId
+        if not item_id:
+            item_id = request.query_params.get("ItemId") or request.query_params.get("itemId")
+            
+        if item_id:
+            should_force = await check_item_requires_cropping(item_id=item_id)
+        else:
+            # If PlaybackInfo requested, check if forced transcoding is active globally
+            force_global = await get_config("force_transcode_enabled", "true")
+            should_force = (force_global.lower() == "true")
+
+    if is_playback_info and should_force and body:
+        logger.info(f"Intercepting & mutating PlaybackInfo request for item {item_id or 'unknown'} to force transcoding")
+        body = mutate_playback_info_request_payload(body)
+        headers["content-length"] = str(len(body))
+
+    try:
+        req = client.build_request(
+            method=request.method,
+            url=url,
+            headers=headers,
+            content=body
+        )
+        
+        resp = await client.send(req, stream=True)
+
+        # Intercept and mutate response body if PlaybackInfo and forced
+        if is_playback_info and should_force and resp.status_code == 200:
+            resp_body = await resp.aread()
+            await resp.aclose()
+            mutated_resp_body = mutate_playback_info_response_payload(resp_body)
+
+            out_headers = dict(resp.headers)
+            out_headers["content-length"] = str(len(mutated_resp_body))
+            out_headers.pop("transfer-encoding", None)
+
+            return Response(
+                content=mutated_resp_body,
+                status_code=resp.status_code,
+                headers=out_headers,
+                media_type=resp.headers.get("content-type")
+            )
+
+        # Otherwise stream downstream response directly
+        out_headers = dict(resp.headers)
+        out_headers.pop("content-length", None)
+        out_headers.pop("transfer-encoding", None)
+
+        return StreamingResponse(
+            resp.aiter_raw(),
+            status_code=resp.status_code,
+            headers=out_headers,
+            background=None
+        )
+    except Exception as e:
+        logger.error(f"Error proxying request to {url}: {e}")
+        return Response(content=f"BlackBarr Proxy Error: {str(e)}", status_code=502)
