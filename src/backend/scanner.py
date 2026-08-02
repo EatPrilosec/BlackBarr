@@ -225,16 +225,18 @@ class CropScanner:
         self.total_files = 0
         logger.info(f"Starting library scan across directories: {directories}")
 
-        video_files = []
-        for media_dir in directories:
-            if os.path.exists(media_dir):
-                for root, _, files in os.walk(media_dir):
-                    for f in files:
-                        ext = os.path.splitext(f)[1].lower()
-                        if ext in VIDEO_EXTENSIONS:
-                            video_files.append(os.path.join(root, f))
-            else:
-                logger.warning(f"Scan directory path does not exist: {media_dir}")
+        def _collect_video_files(dirs: List[str]) -> List[str]:
+            files_list = []
+            for media_dir in dirs:
+                if os.path.exists(media_dir):
+                    for root, _, files in os.walk(media_dir):
+                        for f in files:
+                            ext = os.path.splitext(f)[1].lower()
+                            if ext in VIDEO_EXTENSIONS:
+                                files_list.append(os.path.join(root, f))
+            return files_list
+
+        video_files = await asyncio.to_thread(_collect_video_files, directories)
 
         self.total_files = len(video_files)
         logger.info(f"Found {self.total_files} video files to process across {len(directories)} directories.")
