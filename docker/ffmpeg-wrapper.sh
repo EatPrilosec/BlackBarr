@@ -47,11 +47,11 @@ for ((i=0; i<${#ARGS[@]}; i++)); do
     fi
 done
 
-# If input file was found and database exists, query SQLite for crop value
-if [[ -n "$INPUT_FILE" ]] && [[ -f "$DB_PATH" ]] && command -v sqlite3 >/dev/null 2>&1; then
-    # Escape single quotes for sqlite query
-    ESCAPED_PATH=$(echo "$INPUT_FILE" | sed "s/'/''/g")
-    CROP_VAL=$(sqlite3 "$DB_PATH" "SELECT crop_val FROM media_files WHERE file_path = '$ESCAPED_PATH' AND status = 'PROCESSED' AND crop_val IS NOT NULL AND crop_val != '' LIMIT 1;" 2>/dev/null || true)
+# If input file was found, query BlackBarr API for crop value
+if [[ -n "$INPUT_FILE" ]] && command -v curl >/dev/null 2>&1; then
+    # Try localhost first (host networking), then blackbarr (bridge networking)
+    RES=$(curl -G -s --data-urlencode "path=$INPUT_FILE" "http://localhost:6795/api/crop_val" || curl -G -s --data-urlencode "path=$INPUT_FILE" "http://blackbarr:6795/api/crop_val" || true)
+    CROP_VAL=$(echo "$RES" | grep -o 'crop=[^"]*' || true)
 fi
 
 # If no crop value found in DB, run original ffmpeg command untouched

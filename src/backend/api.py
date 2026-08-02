@@ -14,6 +14,21 @@ logger = logging.getLogger("blackbarr.api")
 
 router = APIRouter(prefix="/api")
 
+@router.get("/crop_val")
+async def get_crop_for_file_safe(path: str = Query(..., description="File path to query crop value for")):
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT crop_val FROM media_files WHERE file_path = ? AND status = 'PROCESSED' AND crop_val IS NOT NULL AND crop_val != '' LIMIT 1",
+            (path,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            if row and row["crop_val"]:
+                from fastapi.responses import Response
+                return Response(content=f"crop={row['crop_val']}", media_type="text/plain")
+            
+    from fastapi.responses import Response
+    return Response(content="", media_type="text/plain")
+
 class ConfigUpdateModel(BaseModel):
     configs: Dict[str, str]
 
