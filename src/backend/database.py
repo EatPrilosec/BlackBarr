@@ -2,39 +2,41 @@ import os
 import aiosqlite
 import logging
 import time
+from contextlib import asynccontextmanager
 
 logger = logging.getLogger("blackbarr.database")
 
 DB_PATH = os.getenv("BLACKBARR_DB_PATH", "/config/BlackBarr.db")
 
+@asynccontextmanager
 async def get_db():
     db_dir = os.path.dirname(DB_PATH)
     if db_dir and not os.path.exists(db_dir):
         os.makedirs(db_dir, mode=0o777, exist_ok=True)
-    db = await aiosqlite.connect(DB_PATH)
-    db.row_factory = aiosqlite.Row
-    await db.execute("PRAGMA journal_mode=WAL;")
-    await db.execute("PRAGMA busy_timeout=5000;")
-    
-    # Ensure database files have read permissions for external processes (ffmpeg-wrapper)
-    try:
-        if os.path.exists(DB_PATH):
-            os.chmod(DB_PATH, 0o666)
-        for ext in ["-wal", "-shm"]:
-            wal_path = f"{DB_PATH}{ext}"
-            if os.path.exists(wal_path):
-                os.chmod(wal_path, 0o666)
-    except Exception:
-        pass
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute("PRAGMA journal_mode=WAL;")
+        await db.execute("PRAGMA busy_timeout=5000;")
+        
+        # Ensure database files have read permissions for external processes (ffmpeg-wrapper)
+        try:
+            if os.path.exists(DB_PATH):
+                os.chmod(DB_PATH, 0o666)
+            for ext in ["-wal", "-shm"]:
+                wal_path = f"{DB_PATH}{ext}"
+                if os.path.exists(wal_path):
+                    os.chmod(wal_path, 0o666)
+        except Exception:
+            pass
 
-    return db
+        yield db
 
 async def init_db():
     db_dir = os.path.dirname(DB_PATH)
     if db_dir and not os.path.exists(db_dir):
         os.makedirs(db_dir, exist_ok=True)
 
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS media_files (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,7 +104,7 @@ async def get_scan_directories() -> list[str]:
 
 
 async def get_config(key: str, default: str = "") -> str:
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT value FROM config WHERE key = ?", (key,)) as cursor:
             row = await cursor.fetchone()
             if row:
@@ -110,7 +112,7 @@ async def get_config(key: str, default: str = "") -> str:
             return default
 
 async def set_config(key: str, value: str):
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("""
             INSERT INTO config (key, value) VALUES (?, ?)
             ON CONFLICT(key) DO UPDATE SET value = excluded.value
@@ -118,20 +120,20 @@ async def set_config(key: str, value: str):
         await db.commit()
 
 async def get_all_config() -> dict:
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT key, value FROM config") as cursor:
             rows = await cursor.fetchall()
             return {row["key"]: row["value"] for row in rows}
 
 async def get_media_by_path(file_path: str):
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT * FROM media_files WHERE file_path = ?", (file_path,)) as cursor:
             row = await cursor.fetchone()
             return dict(row) if row else None
 
 async def upsert_media(file_path: str, file_hash: str, file_size: int, mtime: float, is_hdr: bool, crop_val: str | None, status: str):
     now = time.strftime("%Y-%m-%d %H:%M:%S")
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("""
             INSERT INTO media_files (file_path, file_hash, file_size, mtime, is_hdr, crop_val, status, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -147,7 +149,7 @@ async def upsert_media(file_path: str, file_hash: str, file_size: int, mtime: fl
         await db.commit()
 
 async def list_media(search: str = "", status: str = "", limit: int = 100, offset: int = 0):
-    async with await get_db() as db:
+    async with get_db() as db:
         query = "SELECT * FROM media_files WHERE 1=1"
         params = []
         if search:
@@ -179,7 +181,7 @@ async def list_media(search: str = "", status: str = "", limit: int = 100, offse
         return items, total
 
 async def get_stats():
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("""
             SELECT 
                 COUNT(*) as total,
@@ -196,6 +198,6 @@ async def get_stats():
             }
 
 async def delete_media(media_id: int):
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("DELETE FROM media_files WHERE id = ?", (media_id,))
         await db.commit()

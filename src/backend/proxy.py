@@ -28,7 +28,7 @@ async def check_item_requires_cropping(item_id: Optional[str] = None, file_path:
 
     # If item_id is given, we check if any entry in database has file_path containing item_id or query db
     if item_id:
-        async with await get_db() as db:
+        async with get_db() as db:
             async with db.execute(
                 "SELECT crop_val, status FROM media_files WHERE file_path LIKE ? OR file_path LIKE ?", 
                 (f"%{item_id}%", f"%/{item_id}.%")

@@ -57,7 +57,7 @@ async def get_scan_status():
 
 @router.put("/media/{media_id}")
 async def update_media_item(media_id: int, payload: MediaItemUpdateModel):
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT * FROM media_files WHERE id = ?", (media_id,)) as cursor:
             row = await cursor.fetchone()
             if not row:
