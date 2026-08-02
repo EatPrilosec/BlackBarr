@@ -2,7 +2,7 @@ import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
 
@@ -99,6 +99,11 @@ jf_app.add_middleware(
     allow_headers=["*"],
 )
 
+@jf_app.websocket("/{path:path}")
+async def jf_websocket_route(websocket: WebSocket, path: str):
+    default_jellyfin = os.getenv("TARGET_SERVER_URL", "http://localhost:8096")
+    await proxy_websocket(websocket, default_jellyfin, "target_server_url", "Jellyfin")
+
 @jf_app.middleware("http")
 async def jf_routing_middleware(request: Request, call_next):
     return await reverse_proxy_handler(request)
@@ -112,6 +117,11 @@ emby_app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@emby_app.websocket("/{path:path}")
+async def emby_websocket_route(websocket: WebSocket, path: str):
+    default_emby = os.getenv("TARGET_EMBY_URL", "http://localhost:8096")
+    await proxy_websocket(websocket, default_emby, "target_emby_url", "Emby")
 
 @emby_app.middleware("http")
 async def emby_routing_middleware(request: Request, call_next):

@@ -1,16 +1,19 @@
 import logging
 import json
 import os
+import asyncio
 from typing import Optional
-from fastapi import Request, Response
-from fastapi.responses import StreamingResponse
+from fastapi import Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse, RedirectResponse
 import httpx
+import websockets
 
 from database import get_config, get_media_by_path, get_db
 
 logger = logging.getLogger("blackbarr.proxy")
 
-client = httpx.AsyncClient(timeout=None, follow_redirects=True)
+# follow_redirects=False is CRITICAL for reverse proxies to return 301/302 redirects to client browsers
+client = httpx.AsyncClient(timeout=None, follow_redirects=False)
 
 async def check_item_requires_cropping(item_id: Optional[str] = None, file_path: Optional[str] = None) -> bool:
     """
@@ -26,7 +29,6 @@ async def check_item_requires_cropping(item_id: Optional[str] = None, file_path:
             return True
         return False
 
-    # If item_id is given, we check if any entry in database has file_path containing item_id or query db
     if item_id:
         async with get_db() as db:
             async with db.execute(
@@ -37,11 +39,9 @@ async def check_item_requires_cropping(item_id: Optional[str] = None, file_path:
                 if row and row["status"] == "PROCESSED" and row["crop_val"]:
                     return True
 
-            # Alternatively, if there are any media files in DB with crop_val set, check if item matches
             async with db.execute("SELECT file_path, crop_val FROM media_files WHERE status = 'PROCESSED' AND crop_val IS NOT NULL AND crop_val != ''") as cursor:
                 rows = await cursor.fetchall()
                 for row in rows:
-                    # Match filename stem with item_id if applicable
                     base = os.path.basename(row["file_path"])
                     if item_id in base:
                         return True
@@ -58,7 +58,6 @@ def mutate_playback_info_request_payload(body_bytes: bytes) -> bytes:
         data["EnableDirectStream"] = False
         data["EnableTranscoding"] = True
         
-        # Restrict DirectPlay profiles in DeviceProfile if present
         if "DeviceProfile" in data and isinstance(data["DeviceProfile"], dict):
             dp = data["DeviceProfile"]
             dp["DirectPlayProfiles"] = []
@@ -82,7 +81,6 @@ def mutate_playback_info_response_payload(body_bytes: bytes) -> bytes:
                 ms["SupportsTranscoding"] = True
                 ms["PlayMethod"] = "Transcode"
                 
-                # Clear direct stream URLs to prevent client direct playback bypass
                 if "DirectStreamUrl" in ms:
                     ms["DirectStreamUrl"] = None
 
@@ -96,7 +94,6 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
     if path == "/ui" or path.startswith("/ui/"):
         web_port = os.getenv("PORT", os.getenv("WEB_PORT", "6795"))
         host_header = request.headers.get("host", "").split(":")[0] or "localhost"
-        from fastapi.responses import RedirectResponse
         return RedirectResponse(url=f"http://{host_header}:{web_port}/ui")
 
     configured_url = await get_config(config_key, default_target)
@@ -112,7 +109,6 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
     headers.pop("host", None)
     
     body = await request.body()
-    path = request.url.path
     is_playback_info = "/PlaybackInfo" in path or "/Sessions" in path
     
     should_force = False
@@ -147,14 +143,17 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
         
         resp = await client.send(req, stream=True)
 
+        out_headers = dict(resp.headers)
+        out_headers.pop("content-length", None)
+        out_headers.pop("transfer-encoding", None)
+        out_headers.pop("content-encoding", None)  # Stripping content-encoding fixes black/grey blank page!
+        out_headers.pop("content-security-policy", None)
+
         if is_playback_info and should_force and resp.status_code == 200:
             resp_body = await resp.aread()
             await resp.aclose()
             mutated_resp_body = mutate_playback_info_response_payload(resp_body)
-
-            out_headers = dict(resp.headers)
             out_headers["content-length"] = str(len(mutated_resp_body))
-            out_headers.pop("transfer-encoding", None)
 
             return Response(
                 content=mutated_resp_body,
@@ -163,12 +162,8 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
                 media_type=resp.headers.get("content-type")
             )
 
-        out_headers = dict(resp.headers)
-        out_headers.pop("content-length", None)
-        out_headers.pop("transfer-encoding", None)
-
         return StreamingResponse(
-            resp.aiter_raw(),
+            resp.aiter_bytes(),
             status_code=resp.status_code,
             headers=out_headers,
             background=None
@@ -176,6 +171,57 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
     except Exception as e:
         logger.error(f"[{server_name} Proxy] Error proxying request to {url}: {e}")
         return Response(content=f"BlackBarr Proxy Error: {str(e)}", status_code=502)
+
+async def proxy_websocket(websocket: WebSocket, default_target: str, config_key: str, server_name: str):
+    await websocket.accept()
+    configured_url = await get_config(config_key, default_target)
+    if not configured_url:
+        await websocket.close(code=1011, reason=f"{server_name} target URL not configured")
+        return
+
+    target_ws = configured_url.rstrip("/").replace("http://", "ws://").replace("https://", "wss://")
+    path = websocket.url.path
+    query = websocket.url.query
+    ws_target_url = f"{target_ws}{path}"
+    if query:
+        ws_target_url += f"?{query}"
+
+    try:
+        async with websockets.connect(ws_target_url) as target_ws_conn:
+            async def forward_client_to_target():
+                try:
+                    while True:
+                        msg = await websocket.receive()
+                        if "text" in msg:
+                            await target_ws_conn.send(msg["text"])
+                        elif "bytes" in msg:
+                            await target_ws_conn.send(msg["bytes"])
+                        elif msg.get("type") == "websocket.disconnect":
+                            break
+                except Exception:
+                    pass
+
+            async def forward_target_to_client():
+                try:
+                    async for msg in target_ws_conn:
+                        if isinstance(msg, str):
+                            await websocket.send_text(msg)
+                        else:
+                            await websocket.send_bytes(msg)
+                except Exception:
+                    pass
+
+            await asyncio.gather(
+                forward_client_to_target(),
+                forward_target_to_client(),
+                return_exceptions=True
+            )
+    except Exception as e:
+        logger.warning(f"[{server_name} WebSocket Proxy] Connection error to {ws_target_url}: {e}")
+        try:
+            await websocket.close(code=1011)
+        except Exception:
+            pass
 
 async def reverse_proxy_handler(request: Request) -> Response:
     default_jellyfin = os.getenv("TARGET_SERVER_URL", "http://localhost:8096")
