@@ -19,26 +19,49 @@ auto_inject_config() {
     if [ -d "$target_dir" ]; then
         echo "[BlackBarr] Found target $server_name config directory at $target_dir"
         
-        # Copy wrapper to target directory so container/host volumes share execution path
+        # Determine target directory ownership (UID:GID)
+        local dir_uid_gid
+        dir_uid_gid=$(stat -c "%u:%g" "$target_dir" 2>/dev/null || true)
+
+        # Copy wrapper script and make executable
         local target_wrapper="$target_dir/ffmpeg-wrapper.sh"
         cp -f "$WRAPPER_SRC" "$target_wrapper"
-        chmod +x "$target_wrapper"
-        echo "[BlackBarr] Copied wrapper script to $target_wrapper"
+        chmod 755 "$target_wrapper"
+        
+        if [ -n "$dir_uid_gid" ]; then
+            chown "$dir_uid_gid" "$target_wrapper" 2>/dev/null || true
+        fi
+        echo "[BlackBarr] Copied wrapper script to $target_wrapper (owner: ${dir_uid_gid:-default})"
 
         # Auto-update encoding.xml or system.xml if present
         for config_file in "$target_dir/encoding.xml" "$target_dir/system.xml" "$target_dir/config/encoding.xml" "$target_dir/config/system.xml"; do
             if [ -f "$config_file" ]; then
                 echo "[BlackBarr] Updating $config_file..."
-                # Create backup if not already backed up
+                
+                # Capture original file ownership and permissions mode
+                local file_uid_gid file_mode
+                file_uid_gid=$(stat -c "%u:%g" "$config_file" 2>/dev/null || true)
+                file_mode=$(stat -c "%a" "$config_file" 2>/dev/null || true)
+
+                # Create backup preserving permissions & metadata if not already backed up
                 if [ ! -f "${config_file}.bak" ]; then
-                    cp "$config_file" "${config_file}.bak"
+                    cp -p "$config_file" "${config_file}.bak"
                     echo "[BlackBarr] Backed up original config to ${config_file}.bak"
                 fi
 
                 # Update EncoderAppPath or FfmpegPath xml tags
                 sed -i 's|<EncoderAppPath>.*</EncoderAppPath>|<EncoderAppPath>'${target_wrapper}'</EncoderAppPath>|g' "$config_file" || true
                 sed -i 's|<FfmpegPath>.*</FfmpegPath>|<FfmpegPath>'${target_wrapper}'</FfmpegPath>|g' "$config_file" || true
-                echo "[BlackBarr] Successfully updated $config_file to point to $target_wrapper"
+
+                # Restore original ownership and permissions mode after sed edit
+                if [ -n "$file_uid_gid" ]; then
+                    chown "$file_uid_gid" "$config_file" 2>/dev/null || true
+                fi
+                if [ -n "$file_mode" ]; then
+                    chmod "$file_mode" "$config_file" 2>/dev/null || true
+                fi
+
+                echo "[BlackBarr] Successfully updated $config_file (owner: ${file_uid_gid:-default}, mode: ${file_mode:-default})"
             fi
         done
     fi

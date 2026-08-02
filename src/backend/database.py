@@ -10,11 +10,23 @@ DB_PATH = os.getenv("BLACKBARR_DB_PATH", "/config/BlackBarr.db")
 async def get_db():
     db_dir = os.path.dirname(DB_PATH)
     if db_dir and not os.path.exists(db_dir):
-        os.makedirs(db_dir, exist_ok=True)
+        os.makedirs(db_dir, mode=0o777, exist_ok=True)
     db = await aiosqlite.connect(DB_PATH)
     db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA journal_mode=WAL;")
     await db.execute("PRAGMA busy_timeout=5000;")
+    
+    # Ensure database files have read permissions for external processes (ffmpeg-wrapper)
+    try:
+        if os.path.exists(DB_PATH):
+            os.chmod(DB_PATH, 0o666)
+        for ext in ["-wal", "-shm"]:
+            wal_path = f"{DB_PATH}{ext}"
+            if os.path.exists(wal_path):
+                os.chmod(wal_path, 0o666)
+    except Exception:
+        pass
+
     return db
 
 async def init_db():
