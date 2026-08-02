@@ -133,9 +133,11 @@ async def start_servers():
     port_jf = int(os.getenv("JELLYFIN_PORT", "6796"))
     port_emby = int(os.getenv("EMBY_PORT", "6797"))
 
-    config_web = uvicorn.Config(app, host="0.0.0.0", port=port_web, log_level="info")
-    config_jf = uvicorn.Config(jf_app, host="0.0.0.0", port=port_jf, log_level="info")
-    config_emby = uvicorn.Config(emby_app, host="0.0.0.0", port=port_emby, log_level="info")
+    bind_host = os.getenv("BIND_HOST", "::")
+
+    config_web = uvicorn.Config(app, host=bind_host, port=port_web, log_level="info")
+    config_jf = uvicorn.Config(jf_app, host=bind_host, port=port_jf, log_level="info")
+    config_emby = uvicorn.Config(emby_app, host=bind_host, port=port_emby, log_level="info")
 
     server_web = uvicorn.Server(config_web)
     server_jf = uvicorn.Server(config_jf)
