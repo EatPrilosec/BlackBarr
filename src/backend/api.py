@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 from pydantic import BaseModel
 
