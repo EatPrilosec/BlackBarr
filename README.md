@@ -10,7 +10,6 @@
 - 🔍 **Automated Crop Scanner**: Recursively audits mounted `/media` directories, probes SDR/HDR streams, and samples keyframes using `cropdetect` with color space limits (SDR limit `24`, 10-bit HDR limit `0.05`).
 - 🚀 **Fast Hash Verification**: Uses `md5(path + size + mtime)` caching in SQLite (WAL mode). Re-scanning occurs only when files change on disk.
 - 🛠️ **Hardware-Aware FFmpeg Wrapper**: Standalone bash script (`ffmpeg-wrapper.sh`) intercepting server encoder commands. Dynamically injects software `crop=w:h:x:y`, Intel QuickSync `vpp_qsv=crop_w=...`, or CUDA/NVENC crop filters into `-vf` / `-filter_complex`.
-- ⚙️ **Auto-Configuration Injector**: Automatically updates `<EncoderAppPath>` / `<FfmpegPath>` in target Emby/Jellyfin `encoding.xml` or `system.xml` on container startup.
 - 🎨 **Modern Management Web UI**: Glassmorphic dark-mode dashboard built with Tailwind CSS. Live status badges (`Cropped`, `No Black Bars`, `Pending`, `Error`), manual crop overrides, scanner triggers, and global configuration toggles.
 - 🐳 **Multi-Arch Container**: Pre-built Docker images for `linux/amd64` and `linux/arm64`.
 
@@ -69,7 +68,7 @@ services:
       - ./blackbarr-config:/config
       - /path/to/movies:/media/movies:ro
       - /path/to/tv:/media/tv:ro
-      # Auto-inject wrapper script into both Jellyfin and Emby config volumes
+      # Mount Jellyfin and Emby config directories so BlackBarr can copy the wrapper script
       - /path/to/jellyfin/config:/target-jellyfin-config:rw
       - /path/to/emby/config:/target-emby-config:rw
 
@@ -106,6 +105,28 @@ docker compose up -d
 ```
 
 Access the BlackBarr Management UI at: `http://localhost:6795/ui`
+
+---
+
+## ⚙️ Media Server Configuration
+
+BlackBarr automatically copies the `ffmpeg-wrapper.sh` script to your Jellyfin and Emby configuration directories. However, you must tell the servers to use it:
+
+### Jellyfin
+Jellyfin's official Docker image hardcodes the FFmpeg path in its environment variables. You **must** override it in your `docker-compose.yml`:
+```yaml
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    environment:
+      - JELLYFIN_FFMPEG=/config/ffmpeg-wrapper.sh
+```
+
+### Emby
+Emby configuration is done via the Web UI:
+1. Open the Emby Web Dashboard.
+2. Navigate to **Transcoding**.
+3. Under **Custom FFmpeg path**, enter: `/config/ffmpeg-wrapper.sh`
+4. Click **Save**.
 
 ---
 
