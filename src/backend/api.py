@@ -118,3 +118,50 @@ async def update_configuration(payload: ConfigUpdateModel):
     for k, v in payload.configs.items():
         await set_config(k, str(v))
     return {"message": "Configuration updated successfully", "configs": payload.configs}
+
+class TestConnectionModel(BaseModel):
+    url: str
+
+@router.post("/test-connection")
+async def test_server_connection(payload: TestConnectionModel):
+    url = payload.url.strip().rstrip("/")
+    if not url:
+        raise HTTPException(status_code=400, detail="Server URL cannot be empty")
+
+    test_endpoints = [
+        f"{url}/System/Info/Public",
+        f"{url}/System/Info",
+        f"{url}/emby/System/Info/Public",
+        f"{url}/jellyfin/System/Info/Public",
+        f"{url}/"
+    ]
+
+    import httpx
+    async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
+        for ep in test_endpoints:
+            try:
+                resp = await client.get(ep)
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        server_name = data.get("ServerName") or data.get("ProductName") or "Media Server"
+                        version = data.get("Version") or ""
+                        ver_str = f" v{version}" if version else ""
+                        return {
+                            "success": True,
+                            "message": f"Successfully connected to {server_name}{ver_str}",
+                            "server_name": server_name,
+                            "version": version
+                        }
+                    except Exception:
+                        return {
+                            "success": True,
+                            "message": f"Successfully reached server at {url} (HTTP 200)"
+                        }
+            except Exception:
+                continue
+
+    return {
+        "success": False,
+        "message": f"Could not connect to media server at {url}. Verify URL and network status."
+    }

@@ -102,6 +102,15 @@ function setupEventListeners() {
     document.getElementById('btnCloseSettingsModal').addEventListener('click', closeSettingsModal);
     document.getElementById('btnCancelSettings').addEventListener('click', closeSettingsModal);
     document.getElementById('settingsForm').addEventListener('submit', handleSettingsSubmit);
+
+    // Test Connection Buttons
+    document.getElementById('btnTestJellyfin').addEventListener('click', () => {
+        testServerConnection('cfgTargetUrl', 'testStatusJellyfin', 'Jellyfin');
+    });
+
+    document.getElementById('btnTestEmby').addEventListener('click', () => {
+        testServerConnection('cfgTargetEmbyUrl', 'testStatusEmby', 'Emby');
+    });
 }
 
 async function loadStats() {
@@ -410,6 +419,45 @@ async function handleSettingsSubmit(e) {
         }
     } catch (err) {
         showToast('Error updating configuration', 'error');
+    }
+}
+
+async function testServerConnection(inputId, statusId, serverLabel) {
+    const url = document.getElementById(inputId).value.trim();
+    const statusEl = document.getElementById(statusId);
+    
+    if (!url) {
+        statusEl.className = "text-xs mt-1 font-medium text-amber-400";
+        statusEl.innerText = `Please enter a ${serverLabel} URL first.`;
+        statusEl.classList.remove('hidden');
+        return;
+    }
+
+    statusEl.className = "text-xs mt-1 font-medium text-slate-400";
+    statusEl.innerText = `Testing connection to ${serverLabel}...`;
+    statusEl.classList.remove('hidden');
+
+    try {
+        const resp = await fetch('/api/test-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+        });
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            statusEl.className = "text-xs mt-1 font-medium text-emerald-400";
+            statusEl.innerText = `✓ ${data.message}`;
+            showToast(`${serverLabel} connection test successful!`, 'success');
+        } else {
+            statusEl.className = "text-xs mt-1 font-medium text-rose-400";
+            statusEl.innerText = `✗ ${data.message || 'Connection failed'}`;
+            showToast(`${serverLabel} connection test failed`, 'error');
+        }
+    } catch (err) {
+        statusEl.className = "text-xs mt-1 font-medium text-rose-400";
+        statusEl.innerText = `✗ Connection error: ${err.message}`;
+        showToast(`Failed to test ${serverLabel} connection`, 'error');
     }
 }
 
