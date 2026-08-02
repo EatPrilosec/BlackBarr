@@ -50,15 +50,14 @@ services:
     environment:
       - TARGET_SERVER_URL=http://jellyfin:8096
       - PORT=8080
-      - MEDIA_DIR=/media
+      - SCAN_DIRECTORIES=/media/movies, /media/tv
       - BLACKBARR_DB_PATH=/config/BlackBarr.db
     volumes:
       - ./blackbarr-config:/config
-      - /path/to/media:/media:ro
-      # Optional: Auto-inject wrapper into Jellyfin configuration
+      - /path/to/movies:/media/movies:ro
+      - /path/to/tv:/media/tv:ro
+      # Optional: Auto-inject wrapper into Jellyfin configuration volume before Jellyfin starts
       - /path/to/jellyfin/config:/target-jellyfin-config:rw
-    depends_on:
-      - jellyfin
 
   jellyfin:
     image: jellyfin/jellyfin:latest
@@ -68,7 +67,10 @@ services:
       - "8096:8096"
     volumes:
       - /path/to/jellyfin/config:/config
-      - /path/to/media:/media:ro
+      - /path/to/movies:/media/movies:ro
+      - /path/to/tv:/media/tv:ro
+    depends_on:
+      - blackbarr
 ```
 
 Run container:

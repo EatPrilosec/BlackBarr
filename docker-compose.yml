@@ -20,8 +20,6 @@ services:
       - /path/to/tv:/media/tv:ro
       # Optional: Mount target Jellyfin/Emby server config folder to enable auto-injection of ffmpeg-wrapper
       - /path/to/jellyfin/config:/target-jellyfin-config:rw
-    depends_on:
-      - jellyfin
 
   jellyfin:
     image: jellyfin/jellyfin:latest
@@ -31,4 +29,7 @@ services:
       - "8096:8096"
     volumes:
       - /path/to/jellyfin/config:/config
-      - /path/to/your/media:/media:ro
+      - /path/to/movies:/media/movies:ro
+      - /path/to/tv:/media/tv:ro
+    depends_on:
+      - blackbarr
