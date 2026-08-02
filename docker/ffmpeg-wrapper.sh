@@ -76,9 +76,9 @@ fi
 # Format crop filter string
 # CROP_VAL can be "1920:800:0:140" or "crop=1920:800:0:140"
 if [[ "$CROP_VAL" =~ ^crop= ]]; then
-    CROP_FILTER="$CROP_VAL"
+    CROP_FILTER="${CROP_VAL},setsar=1"
 else
-    CROP_FILTER="crop=$CROP_VAL"
+    CROP_FILTER="crop=${CROP_VAL},setsar=1"
 fi
 
 # Detect hardware acceleration type from arguments
@@ -95,10 +95,10 @@ done
 # Adapt crop filter for QSV or CUDA hardware pipelines if needed
 if (( HAS_QSV )); then
     # Parse w:h:x:y
-    RAW_CROP="${CROP_FILTER#crop=}"
+    RAW_CROP="${CROP_VAL#crop=}"
     IFS=':' read -r CW CH CX CY <<< "$RAW_CROP"
     if [[ -n "$CW" ]] && [[ -n "$CH" ]]; then
-        QSV_CROP="vpp_qsv=crop_w=$CW:crop_h=$CH:crop_x=${CX:-0}:crop_y=${CY:-0}"
+        QSV_CROP="vpp_qsv=crop_w=$CW:crop_h=$CH:crop_x=${CX:-0}:crop_y=${CY:-0},setsar=1"
         CROP_FILTER="$QSV_CROP"
     fi
 fi
