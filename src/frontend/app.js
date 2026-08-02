@@ -60,21 +60,6 @@ function setupEventListeners() {
         loadMediaTable();
     });
 
-async function loadDirectories() {
-    try {
-        const resp = await fetch('/api/directories');
-        if (!resp.ok) return;
-        const data = await resp.json();
-        const select = document.getElementById('directoryFilter');
-        if (!select || !data.directories) return;
-
-        select.innerHTML = '<option value="">All Scan Paths</option>' + 
-            data.directories.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
-    } catch (err) {
-        console.error("Error loading scan directories:", err);
-    }
-}
-
     // Column Header Sorting
     document.querySelectorAll('th[data-sort]').forEach(th => {
         th.addEventListener('click', () => {
@@ -217,6 +202,21 @@ async function loadDirectories() {
     document.getElementById('btnTestEmby').addEventListener('click', () => {
         testServerConnection('cfgTargetEmbyUrl', 'testStatusEmby', 'Emby');
     });
+}
+
+async function loadDirectories() {
+    try {
+        const resp = await fetch('/api/directories');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const select = document.getElementById('directoryFilter');
+        if (!select || !data.directories) return;
+
+        select.innerHTML = '<option value="">All Scan Paths</option>' + 
+            data.directories.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+    } catch (err) {
+        console.error("Error loading scan directories:", err);
+    }
 }
 
 async function loadStats() {
@@ -506,6 +506,8 @@ function updatePaginationInfo() {
     document.getElementById('btnNextPage').disabled = (currentPage * pageSize >= totalItems);
 }
 
+let wasScanning = false;
+
 function startScanStatusPolling() {
     if (scanStatusInterval) clearInterval(scanStatusInterval);
 
@@ -519,14 +521,18 @@ function startScanStatusPolling() {
             const txt = document.getElementById('scannerStatusText');
 
             if (status.is_scanning) {
+                wasScanning = true;
                 badge.classList.remove('hidden');
                 badge.classList.add('flex');
                 txt.innerText = `Scanning (${status.scanned_files}/${status.total_files})`;
             } else {
                 badge.classList.add('hidden');
                 badge.classList.remove('flex');
-                loadStats();
-                loadMediaTable();
+                if (wasScanning) {
+                    wasScanning = false;
+                    loadStats();
+                    loadMediaTable();
+                }
             }
         } catch (err) {
             console.error("Scanner status check error:", err);
