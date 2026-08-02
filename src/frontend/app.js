@@ -10,10 +10,15 @@ let currentSortOrder = 'desc';
 
 let selectedMediaIds = new Set();
 
-document.addEventListener('DOMContentLoaded', () => {
-    lucide.createIcons();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        try { if (window.lucide) lucide.createIcons(); } catch(e) {}
+        initApp();
+    });
+} else {
+    try { if (window.lucide) lucide.createIcons(); } catch(e) {}
     initApp();
-});
+}
 
 async function initApp() {
     setupEventListeners();
@@ -187,6 +192,84 @@ function setupEventListeners() {
     document.getElementById('btnTestEmby').addEventListener('click', () => {
         testServerConnection('cfgTargetEmbyUrl', 'testStatusEmby', 'Emby');
     });
+}
+
+async function loadStats() {
+    try {
+        const resp = await fetch('/api/stats');
+        if (!resp.ok) return;
+        const stats = await resp.json();
+
+        document.getElementById('statTotal').innerText = stats.total || 0;
+        document.getElementById('statCropped').innerText = stats.cropped || 0;
+        document.getElementById('statNoBlackBars').innerText = stats.no_black_bars || 0;
+        document.getElementById('statPending').innerText = stats.pending || 0;
+        document.getElementById('statError').innerText = stats.error || 0;
+    } catch (err) {
+        console.error("Error loading stats:", err);
+    }
+}
+
+async function loadConfig() {
+    try {
+        const resp = await fetch('/api/config');
+        if (!resp.ok) return;
+        const config = await resp.json();
+
+        const forced = config.force_transcode_enabled === "true";
+        document.getElementById('forcedTranscodeToggle').checked = forced;
+
+        document.getElementById('cfgTargetUrl').value = config.target_server_url || "http://localhost:8096";
+        document.getElementById('cfgTargetEmbyUrl').value = config.target_emby_url || "";
+        document.getElementById('cfgScanDirectories').value = config.scan_directories || "/media";
+        document.getElementById('cfgSdrLimit').value = config.sdr_crop_limit || "24";
+        document.getElementById('cfgHdrLimit').value = config.hdr_crop_limit || "0.05";
+        document.getElementById('cfgSampleCount').value = config.sample_count || "10";
+        document.getElementById('cfgScanInterval').value = config.scan_interval_minutes || "60";
+    } catch (err) {
+        console.error("Error loading configuration:", err);
+    }
+}
+
+async function loadMediaTable() {
+    const search = document.getElementById('searchInput').value.trim();
+    const status = document.getElementById('statusFilter').value;
+    const format = document.getElementById('formatFilter').value;
+    const offset = (currentPage - 1) * pageSize;
+
+    const tbody = document.getElementById('mediaTableBody');
+    
+    try {
+        const queryParams = {
+            search: search,
+            status: status,
+            sort_by: currentSortBy,
+            sort_order: currentSortOrder,
+            limit: pageSize,
+            offset: offset
+        };
+
+        if (format === 'hdr') queryParams.is_hdr = 'true';
+        if (format === 'sdr') queryParams.is_hdr = 'false';
+
+        const query = new URLSearchParams(queryParams);
+        const resp = await fetch(`/api/media?${query.toString()}`);
+        if (!resp.ok) throw new Error("Failed to load media items");
+        
+        const data = await resp.json();
+        totalItems = data.total;
+        renderMediaTable(data.items);
+        updatePaginationInfo();
+    } catch (err) {
+        console.error("Error loading media table:", err);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="py-8 text-center text-rose-400">
+                    Failed to connect to BlackBarr API server.
+                </td>
+            </tr>
+        `;
+    }
 }
 
 async function triggerScanMode(mode) {
