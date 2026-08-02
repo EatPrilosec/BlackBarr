@@ -86,7 +86,7 @@ Access the BlackBarr Management UI at: `http://localhost:8080/ui`
 | :--- | :--- | :--- |
 | `TARGET_SERVER_URL` | `http://localhost:8096` | Downstream Jellyfin or Emby server URL |
 | `PORT` | `8080` | Port for BlackBarr proxy & REST API |
-| `MEDIA_DIR` | `/media` | Directory to audit for video files |
+| `SCAN_DIRECTORIES` | `/media` | Comma-separated list of mounted media directories (configurable via Web UI) |
 | `BLACKBARR_DB_PATH` | `/config/BlackBarr.db` | SQLite database file location |
 
 ---

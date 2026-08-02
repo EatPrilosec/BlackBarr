@@ -56,6 +56,7 @@ async def init_db():
         defaults = {
             "force_transcode_enabled": "true",
             "target_server_url": os.getenv("TARGET_SERVER_URL", "http://localhost:8096"),
+            "scan_directories": os.getenv("SCAN_DIRECTORIES", os.getenv("MEDIA_DIR", "/media")),
             "sdr_crop_limit": "24",
             "hdr_crop_limit": "0.05",
             "sample_count": "10",
@@ -70,6 +71,22 @@ async def init_db():
 
         await db.commit()
         logger.info(f"Database initialized at {DB_PATH}")
+
+async def get_scan_directories() -> list[str]:
+    raw = await get_config("scan_directories", "/media")
+    if not raw:
+        return ["/media"]
+    # Handle comma-separated or JSON list
+    if raw.strip().startswith("["):
+        import json
+        try:
+            res = json.loads(raw)
+            if isinstance(res, list):
+                return [str(d).strip() for d in res if str(d).strip()]
+        except Exception:
+            pass
+    return [d.strip() for d in raw.split(",") if d.strip()]
+
 
 async def get_config(key: str, default: str = "") -> str:
     async with await get_db() as db:

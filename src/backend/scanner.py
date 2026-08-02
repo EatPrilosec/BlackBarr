@@ -200,26 +200,33 @@ class CropScanner:
                 status="ERROR"
             )
 
-    async def run_scan(self, force: bool = False):
+    async def run_scan(self, force: bool = False, directories: Optional[List[str]] = None):
         if self.is_scanning:
             logger.warning("Scan already in progress.")
             return
 
+        if not directories:
+            from database import get_scan_directories
+            directories = await get_scan_directories()
+
         self.is_scanning = True
         self.scanned_files = 0
         self.total_files = 0
-        logger.info(f"Starting library scan in directory: {self.media_dir}")
+        logger.info(f"Starting library scan across directories: {directories}")
 
         video_files = []
-        if os.path.exists(self.media_dir):
-            for root, _, files in os.walk(self.media_dir):
-                for f in files:
-                    ext = os.path.splitext(f)[1].lower()
-                    if ext in VIDEO_EXTENSIONS:
-                        video_files.append(os.path.join(root, f))
+        for media_dir in directories:
+            if os.path.exists(media_dir):
+                for root, _, files in os.walk(media_dir):
+                    for f in files:
+                        ext = os.path.splitext(f)[1].lower()
+                        if ext in VIDEO_EXTENSIONS:
+                            video_files.append(os.path.join(root, f))
+            else:
+                logger.warning(f"Scan directory path does not exist: {media_dir}")
 
         self.total_files = len(video_files)
-        logger.info(f"Found {self.total_files} video files to process.")
+        logger.info(f"Found {self.total_files} video files to process across {len(directories)} directories.")
 
         for fpath in video_files:
             if self._stop_event.is_set():
@@ -230,6 +237,7 @@ class CropScanner:
         self.is_scanning = False
         self.current_file = ""
         logger.info("Library scan finished.")
+
 
     def get_progress(self) -> Dict[str, Any]:
         return {

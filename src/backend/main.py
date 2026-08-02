@@ -37,10 +37,8 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing BlackBarr database...")
     await init_db()
 
-    media_dir = os.getenv("MEDIA_DIR", "/media")
-    scanner_instance.media_dir = media_dir
-
     auto_scan = await get_config("auto_scan_on_startup", "true")
+
     scan_task = None
     if auto_scan.lower() == "true":
         logger.info("Auto-scan on startup enabled. Starting scan task...")
