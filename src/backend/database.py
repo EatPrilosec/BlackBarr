@@ -153,6 +153,7 @@ async def list_media(
     search: str = "",
     status: str = "",
     is_hdr: Optional[bool] = None,
+    path_prefix: str = "",
     sort_by: str = "updated_at",
     sort_order: str = "desc",
     limit: int = 100,
@@ -165,6 +166,10 @@ async def list_media(
         if search:
             where_clauses.append("file_path LIKE ?")
             params.append(f"%{search}%")
+
+        if path_prefix:
+            where_clauses.append("file_path LIKE ?")
+            params.append(f"{path_prefix}%")
 
         if status:
             if status.upper() == "CROPPED":

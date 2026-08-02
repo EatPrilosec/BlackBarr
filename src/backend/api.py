@@ -43,11 +43,18 @@ class MediaItemCreateModel(BaseModel):
     status: str = "PROCESSED"
     is_hdr: bool = False
 
+@router.get("/directories")
+async def get_scan_directories_list():
+    from database import get_scan_directories
+    dirs = await get_scan_directories()
+    return {"directories": dirs}
+
 @router.get("/media")
 async def get_media_list(
     search: str = Query("", description="Filter by file path"),
     status: str = Query("", description="Filter by status (CROPPED, NO_BLACK_BARS, PENDING, ERROR, SKIPPED)"),
     is_hdr: Optional[bool] = Query(None, description="Filter by format (True for HDR, False for SDR)"),
+    path_prefix: str = Query("", description="Filter by directory path prefix"),
     sort_by: str = Query("updated_at", description="Sort by column (file_path, is_hdr, crop_val, status, updated_at)"),
     sort_order: str = Query("desc", description="Sort order (asc or desc)"),
     limit: int = Query(100, ge=1, le=1000),
@@ -57,6 +64,7 @@ async def get_media_list(
         search=search,
         status=status,
         is_hdr=is_hdr,
+        path_prefix=path_prefix,
         sort_by=sort_by,
         sort_order=sort_order,
         limit=limit,
@@ -77,6 +85,7 @@ class ScanRequestModel(BaseModel):
     search: Optional[str] = ""
     status: Optional[str] = ""
     is_hdr: Optional[bool] = None
+    path_prefix: Optional[str] = ""
 
 @router.post("/scan")
 async def trigger_scan(
@@ -96,7 +105,8 @@ async def trigger_scan(
                 scanner_instance.scan_by_filter, 
                 search=payload.search or "", 
                 status=payload.status or "", 
-                is_hdr=payload.is_hdr
+                is_hdr=payload.is_hdr,
+                path_prefix=payload.path_prefix or ""
             )
             return {"message": "Filtered library rescan initiated", "mode": "filtered"}
         elif payload.mode == "full":

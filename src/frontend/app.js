@@ -22,6 +22,7 @@ if (document.readyState === 'loading') {
 
 async function initApp() {
     setupEventListeners();
+    await loadDirectories();
     await loadStats();
     await loadConfig();
     await loadMediaTable();
@@ -38,6 +39,15 @@ function setupEventListeners() {
         }, 300);
     });
 
+    // Directory / Scan Path Filter
+    const dirFilter = document.getElementById('directoryFilter');
+    if (dirFilter) {
+        dirFilter.addEventListener('change', () => {
+            currentPage = 1;
+            loadMediaTable();
+        });
+    }
+
     // Status Filter
     document.getElementById('statusFilter').addEventListener('change', () => {
         currentPage = 1;
@@ -49,6 +59,21 @@ function setupEventListeners() {
         currentPage = 1;
         loadMediaTable();
     });
+
+async function loadDirectories() {
+    try {
+        const resp = await fetch('/api/directories');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const select = document.getElementById('directoryFilter');
+        if (!select || !data.directories) return;
+
+        select.innerHTML = '<option value="">All Scan Paths</option>' + 
+            data.directories.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+    } catch (err) {
+        console.error("Error loading scan directories:", err);
+    }
+}
 
     // Column Header Sorting
     document.querySelectorAll('th[data-sort]').forEach(th => {
@@ -235,6 +260,7 @@ async function loadMediaTable() {
     const search = document.getElementById('searchInput').value.trim();
     const status = document.getElementById('statusFilter').value;
     const format = document.getElementById('formatFilter').value;
+    const pathPrefix = document.getElementById('directoryFilter') ? document.getElementById('directoryFilter').value : '';
     const offset = (currentPage - 1) * pageSize;
 
     const tbody = document.getElementById('mediaTableBody');
@@ -243,6 +269,7 @@ async function loadMediaTable() {
         const queryParams = {
             search: search,
             status: status,
+            path_prefix: pathPrefix,
             sort_by: currentSortBy,
             sort_order: currentSortOrder,
             limit: pageSize,
@@ -296,6 +323,7 @@ async function triggerScanMode(mode) {
         if (mode === 'filtered') {
             payload.search = document.getElementById('searchInput').value.trim();
             payload.status = document.getElementById('statusFilter').value;
+            payload.path_prefix = document.getElementById('directoryFilter') ? document.getElementById('directoryFilter').value : '';
             const fmt = document.getElementById('formatFilter').value;
             if (fmt === 'hdr') payload.is_hdr = true;
             if (fmt === 'sdr') payload.is_hdr = false;

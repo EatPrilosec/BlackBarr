@@ -282,13 +282,13 @@ class CropScanner:
         self.current_file = ""
         logger.info("Targeted ID scan finished.")
 
-    async def scan_by_filter(self, search: str = "", status: str = "", is_hdr: Optional[bool] = None):
+    async def scan_by_filter(self, search: str = "", status: str = "", is_hdr: Optional[bool] = None, path_prefix: str = ""):
         if self.is_scanning:
             logger.warning("Scan already in progress.")
             return
 
         from database import list_media
-        items, total = await list_media(search=search, status=status, is_hdr=is_hdr, limit=10000, offset=0)
+        items, total = await list_media(search=search, status=status, is_hdr=is_hdr, path_prefix=path_prefix, limit=10000, offset=0)
         file_paths = [item["file_path"] for item in items]
 
         if not file_paths:
