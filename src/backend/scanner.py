@@ -118,16 +118,16 @@ class CropScanner:
             return None, is_hdr, "ERROR"
 
         # Parse luma limit (e.g. if limit is 0.05 scale to 255 -> 13, else int)
-        def _format_limit(l_val: str) -> str:
+        def _format_limit(l_val: str, default_val: str) -> str:
             try:
                 f = float(l_val)
                 if 0 < f < 1.0:
                     return str(max(1, int(f * 255)))
                 return str(int(f))
             except Exception:
-                return "24"
+                return default_val
 
-        limit = _format_limit(hdr_limit if is_hdr else sdr_limit)
+        limit = _format_limit(hdr_limit, "70") if is_hdr else _format_limit(sdr_limit, "24")
 
         # Sample timestamps starting at +5 minutes (300 seconds) if duration permits
         start_time = 300.0 if duration > 600.0 else (duration * 0.1)

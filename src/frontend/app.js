@@ -248,7 +248,7 @@ async function loadConfig() {
         document.getElementById('cfgTargetEmbyUrl').value = config.target_emby_url || "";
         document.getElementById('cfgScanDirectories').value = config.scan_directories || "/media";
         document.getElementById('cfgSdrLimit').value = config.sdr_crop_limit || "24";
-        document.getElementById('cfgHdrLimit').value = config.hdr_crop_limit || "0.05";
+        document.getElementById('cfgHdrLimit').value = config.hdr_crop_limit || "70";
         document.getElementById('cfgSampleCount').value = config.sample_count || "10";
         document.getElementById('cfgScanInterval').value = config.scan_interval_minutes || "60";
     } catch (err) {

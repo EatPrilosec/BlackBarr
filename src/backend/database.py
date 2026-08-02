@@ -74,7 +74,7 @@ async def init_db():
             "target_emby_url": os.getenv("TARGET_EMBY_URL", ""),
             "scan_directories": os.getenv("SCAN_DIRECTORIES", os.getenv("MEDIA_DIR", "/media")),
             "sdr_crop_limit": "24",
-            "hdr_crop_limit": "0.05",
+            "hdr_crop_limit": "70",
             "sample_count": "10",
             "scan_interval_minutes": "60",
             "auto_scan_on_startup": "true"
@@ -84,6 +84,11 @@ async def init_db():
             await db.execute("""
                 INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)
             """, (k, v))
+
+        # Migration: update legacy 0.05 or 12 HDR limit to 70
+        await db.execute("""
+            UPDATE config SET value = '70' WHERE key = 'hdr_crop_limit' AND (value = '0.05' OR value = '12');
+        """)
 
         await db.commit()
         logger.info(f"Database initialized at {DB_PATH}")
