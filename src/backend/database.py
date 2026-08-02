@@ -181,17 +181,20 @@ async def list_media(
 
         where_sql = " AND ".join(where_clauses)
 
-        allowed_sorts = {
-            "file_path": "file_path",
-            "is_hdr": "is_hdr",
-            "crop_val": "crop_val",
-            "status": "status",
-            "updated_at": "updated_at"
-        }
-        order_col = allowed_sorts.get(sort_by.lower(), "updated_at")
+        if sort_by.lower() == "status":
+            order_expr = "CASE WHEN status = 'PROCESSED' AND crop_val IS NOT NULL AND crop_val != '' THEN 1 WHEN status = 'PROCESSED' AND (crop_val IS NULL OR crop_val = '') THEN 2 WHEN status = 'PENDING' THEN 3 WHEN status = 'ERROR' THEN 4 ELSE 5 END"
+        elif sort_by.lower() == "crop_val":
+            order_expr = "CASE WHEN crop_val IS NOT NULL AND crop_val != '' THEN 1 ELSE 2 END, crop_val"
+        elif sort_by.lower() == "file_path":
+            order_expr = "file_path"
+        elif sort_by.lower() == "is_hdr":
+            order_expr = "is_hdr"
+        else:
+            order_expr = "updated_at"
+
         order_dir = "ASC" if sort_order.lower() == "asc" else "DESC"
 
-        query = f"SELECT * FROM media_files WHERE {where_sql} ORDER BY {order_col} {order_dir} LIMIT ? OFFSET ?"
+        query = f"SELECT * FROM media_files WHERE {where_sql} ORDER BY {order_expr} {order_dir}, updated_at DESC LIMIT ? OFFSET ?"
         query_params = list(params) + [limit, offset]
 
         async with db.execute(query, query_params) as cursor:

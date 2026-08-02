@@ -51,7 +51,7 @@ function setupEventListeners() {
                 currentSortOrder = (currentSortOrder === 'asc') ? 'desc' : 'asc';
             } else {
                 currentSortBy = col;
-                currentSortOrder = (col === 'file_path') ? 'asc' : 'desc';
+                currentSortOrder = (col === 'file_path' || col === 'status' || col === 'crop_val') ? 'asc' : 'desc';
             }
             updateSortHeaderIcons();
             currentPage = 1;
