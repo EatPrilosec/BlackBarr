@@ -122,16 +122,17 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
         if not item_id:
             item_id = request.query_params.get("ItemId") or request.query_params.get("itemId")
             
-        if item_id:
-            should_force = await check_item_requires_cropping(item_id=item_id)
+        force_global = await get_config("force_transcode_enabled", "true")
+        if force_global.lower() == "true":
+            should_force = True
         else:
-            force_global = await get_config("force_transcode_enabled", "true")
-            should_force = (force_global.lower() == "true")
+            should_force = await check_item_requires_cropping(item_id=item_id)
 
-    if is_playback_info and should_force and body:
+    if is_playback_info and should_force:
         logger.info(f"[{server_name} Proxy] Intercepting PlaybackInfo request for item {item_id or 'unknown'} to force transcoding")
-        body = mutate_playback_info_request_payload(body)
-        headers["content-length"] = str(len(body))
+        if body:
+            body = mutate_playback_info_request_payload(body)
+            headers["content-length"] = str(len(body))
 
     try:
         req = client.build_request(

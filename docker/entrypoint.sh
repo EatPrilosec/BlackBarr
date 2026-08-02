@@ -52,25 +52,42 @@ auto_inject_config() {
                     echo "[BlackBarr] Backed up original config to ${config_file}.bak"
                 fi
 
-                # Update or insert EncoderAppPath XML tag
-                if grep -q "<EncoderAppPath>" "$config_file"; then
-                    sed -i 's|<EncoderAppPath>.*</EncoderAppPath>|<EncoderAppPath>'${container_wrapper_path}'</EncoderAppPath>|g' "$config_file" || true
-                elif grep -q "</EncodingOptions>" "$config_file"; then
-                    sed -i 's|</EncodingOptions>|  <EncoderAppPath>'${container_wrapper_path}'</EncoderAppPath>\n</EncodingOptions>|g' "$config_file" || true
-                elif grep -q "</ServerConfiguration>" "$config_file"; then
-                    sed -i 's|</ServerConfiguration>|  <EncoderAppPath>'${container_wrapper_path}'</EncoderAppPath>\n</ServerConfiguration>|g' "$config_file" || true
-                fi
+                # Inject/update EncoderAppPath, EncoderAppPathDisplay, and FfmpegPath XML tags
+                python3 -c '
+import sys, os, re
 
-                # Update or insert FfmpegPath XML tag
-                if grep -q "<FfmpegPath>" "$config_file"; then
-                    sed -i 's|<FfmpegPath>.*</FfmpegPath>|<FfmpegPath>'${container_wrapper_path}'</FfmpegPath>|g' "$config_file" || true
-                elif grep -q "</ServerConfiguration>" "$config_file"; then
-                    sed -i 's|</ServerConfiguration>|  <FfmpegPath>'${container_wrapper_path}'</FfmpegPath>\n</ServerConfiguration>|g' "$config_file" || true
-                elif grep -q "</EncodingOptions>" "$config_file"; then
-                    sed -i 's|</EncodingOptions>|  <FfmpegPath>'${container_wrapper_path}'</FfmpegPath>\n</EncodingOptions>|g' "$config_file" || true
-                fi
+config_file = sys.argv[1]
+wrapper_path = sys.argv[2]
 
-                # Restore original ownership and permissions mode after sed edit
+if not os.path.exists(config_file):
+    sys.exit(0)
+
+with open(config_file, "r", encoding="utf-8", errors="ignore") as f:
+    content = f.read()
+
+# Update or insert EncoderAppPath
+if "<EncoderAppPath>" in content:
+    content = re.sub(r"<EncoderAppPath>.*?</EncoderAppPath>", f"<EncoderAppPath>{wrapper_path}</EncoderAppPath>", content)
+elif "</EncodingOptions>" in content:
+    content = content.replace("</EncodingOptions>", f"  <EncoderAppPath>{wrapper_path}</EncoderAppPath>\n</EncodingOptions>")
+
+# Update or insert EncoderAppPathDisplay
+if "<EncoderAppPathDisplay>" in content:
+    content = re.sub(r"<EncoderAppPathDisplay>.*?</EncoderAppPathDisplay>", f"<EncoderAppPathDisplay>{wrapper_path}</EncoderAppPathDisplay>", content)
+elif "</EncodingOptions>" in content:
+    content = content.replace("</EncodingOptions>", f"  <EncoderAppPathDisplay>{wrapper_path}</EncoderAppPathDisplay>\n</EncodingOptions>")
+
+# Update or insert FfmpegPath
+if "<FfmpegPath>" in content:
+    content = re.sub(r"<FfmpegPath>.*?</FfmpegPath>", f"<FfmpegPath>{wrapper_path}</FfmpegPath>", content)
+elif "</ServerConfiguration>" in content:
+    content = content.replace("</ServerConfiguration>", f"  <FfmpegPath>{wrapper_path}</FfmpegPath>\n</ServerConfiguration>")
+
+with open(config_file, "w", encoding="utf-8") as f:
+    f.write(content)
+' "$config_file" "$container_wrapper_path"
+
+                # Restore original ownership and permissions mode after edit
                 if [ -n "$file_uid_gid" ]; then
                     chown "$file_uid_gid" "$config_file" 2>/dev/null || true
                 fi
