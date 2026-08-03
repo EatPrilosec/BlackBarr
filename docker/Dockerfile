@@ -1,3 +1,10 @@
+# Stage 1: Build Jellyfin C# Plugin
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS plugin-builder
+WORKDIR /src
+COPY src/plugin/jellyfin /src
+RUN dotnet publish -c Release -o /out
+
+# Stage 2: Final BlackBarr App Image
 FROM python:3.11-slim
 
 # Install system dependencies (ffmpeg, sqlite3, curl, bash)
@@ -19,6 +26,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY src /app/src
 
+# Copy compiled C# plugin DLL
+COPY --from=plugin-builder /out /app/plugins/jellyfin
+
 # Copy scripts
 COPY docker/ffmpeg-wrapper.sh /usr/local/bin/ffmpeg-wrapper.sh
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -30,7 +40,7 @@ VOLUME ["/config", "/media"]
 
 ENV BLACKBARR_DB_PATH=/config/BlackBarr.db
 
-EXPOSE 6795 6796 6797
+EXPOSE 6795
 
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:6795/health || exit 1
 

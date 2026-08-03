@@ -35,6 +35,15 @@ auto_inject_config() {
         if [ -n "$dir_uid_gid" ]; then
             chown "$dir_uid_gid" "$target_wrapper" 2>/dev/null || true
         fi
+        if [ "$server_name" = "Jellyfin" ] && [ -d "/app/plugins/jellyfin" ]; then
+            local plugin_target_dir="$target_dir/plugins/BlackBarrHelper"
+            mkdir -p "$plugin_target_dir"
+            cp -rf /app/plugins/jellyfin/* "$plugin_target_dir/"
+            if [ -n "$dir_uid_gid" ]; then
+                chown -R "$dir_uid_gid" "$plugin_target_dir" 2>/dev/null || true
+            fi
+            echo "[BlackBarr] Installed/Updated Jellyfin plugin 'BlackBarr Helper' at $plugin_target_dir"
+        fi
         if [ "$server_name" = "Emby" ]; then
             local target_emby_preinit="$target_dir/00-emby-preinit.sh"
             if [ -d "$target_emby_preinit" ]; then

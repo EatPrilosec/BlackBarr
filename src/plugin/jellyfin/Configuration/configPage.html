@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>BlackBarr Helper Configuration</title>
+</head>
+<body>
+    <div id="blackbarrConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="blackbarrConfigurationForm">
+                    <div class="sectionTitleContainer flex align-items-center flex-grow">
+                        <h2 class="sectionTitle">BlackBarr Helper Options</h2>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="txtBlackBarrUrl">BlackBarr API Server URL:</label>
+                        <input id="txtBlackBarrUrl" name="txtBlackBarrUrl" type="text" is="emby-input" required />
+                        <div class="fieldDescription">Base URL of your BlackBarr container (e.g. http://blackbarr:6795 or http://localhost:6795).</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withFieldDescription">
+                        <label>
+                            <input id="chkForceTranscodeCropped" name="chkForceTranscodeCropped" type="checkbox" is="emby-checkbox" />
+                            <span>Force Transcode Cropped Media</span>
+                        </label>
+                        <div class="fieldDescription">Automatically force transcoding for items with detected black bar crops.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withFieldDescription">
+                        <label>
+                            <input id="chkForceTranscodeAll" name="chkForceTranscodeAll" type="checkbox" is="emby-checkbox" />
+                            <span>Force Transcode ALL Streams</span>
+                        </label>
+                        <div class="fieldDescription">Globally force transcoding on all playback sessions across this Jellyfin server.</div>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            var BlackBarrConfigurationPage = {
+                pluginUniqueId: 'b598b9e4-6a2c-476b-9c71-2191419736c4'
+            };
+
+            $('#blackbarrConfigurationPage').on('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(BlackBarrConfigurationPage.pluginUniqueId).then(function (config) {
+                    $('#txtBlackBarrUrl').val(config.BlackBarrUrl || 'http://blackbarr:6795');
+                    $('#chkForceTranscodeCropped').prop('checked', config.ForceTranscodeCropped !== false);
+                    $('#chkForceTranscodeAll').prop('checked', config.ForceTranscodeAll === true);
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            $('#blackbarrConfigurationForm').on('submit', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(BlackBarrConfigurationPage.pluginUniqueId).then(function (config) {
+                    config.BlackBarrUrl = $('#txtBlackBarrUrl').val();
+                    config.ForceTranscodeCropped = $('#chkForceTranscodeCropped').prop('checked');
+                    config.ForceTranscodeAll = $('#chkForceTranscodeAll').prop('checked');
+                    ApiClient.updatePluginConfiguration(BlackBarrConfigurationPage.pluginUniqueId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+                return false;
+            });
+        </script>
+    </div>
+</body>
+</html>

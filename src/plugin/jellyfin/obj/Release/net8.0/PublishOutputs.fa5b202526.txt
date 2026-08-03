@@ -1,0 +1,16 @@
+/src/dist/plugins/BlackBarrHelper/Jellyfin.Plugin.BlackBarrHelper.dll
+/src/dist/plugins/BlackBarrHelper/Jellyfin.Plugin.BlackBarrHelper.deps.json
+/src/dist/plugins/BlackBarrHelper/Jellyfin.Plugin.BlackBarrHelper.pdb
+/src/dist/plugins/BlackBarrHelper/Diacritics.dll
+/src/dist/plugins/BlackBarrHelper/ICU4N.dll
+/src/dist/plugins/BlackBarrHelper/ICU4N.Transliterator.dll
+/src/dist/plugins/BlackBarrHelper/J2N.dll
+/src/dist/plugins/BlackBarrHelper/MediaBrowser.Common.dll
+/src/dist/plugins/BlackBarrHelper/MediaBrowser.Controller.dll
+/src/dist/plugins/BlackBarrHelper/Jellyfin.Data.dll
+/src/dist/plugins/BlackBarrHelper/Jellyfin.Extensions.dll
+/src/dist/plugins/BlackBarrHelper/MediaBrowser.Model.dll
+/src/dist/plugins/BlackBarrHelper/Emby.Naming.dll
+/src/dist/plugins/BlackBarrHelper/Microsoft.Extensions.Configuration.Binder.dll
+/src/dist/plugins/BlackBarrHelper/Microsoft.Extensions.DependencyInjection.Abstractions.dll
+/src/dist/plugins/BlackBarrHelper/Microsoft.Extensions.Logging.Abstractions.dll

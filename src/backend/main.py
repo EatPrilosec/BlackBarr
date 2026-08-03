@@ -69,23 +69,7 @@ app.include_router(api_router)
 async def health_check():
     """
     Healthcheck endpoint for Docker health checks.
-    Verifies server status and confirms all required script files are generated as regular files (not directories).
     """
-    jf_dir = "/target-jellyfin-config"
-    if os.path.exists(jf_dir):
-        wrapper = os.path.join(jf_dir, "ffmpeg-wrapper.sh")
-        if not os.path.exists(wrapper) or os.path.isdir(wrapper):
-            return Response(content='{"status": "unhealthy", "reason": "Jellyfin ffmpeg-wrapper.sh missing or is a directory"}', status_code=503, media_type="application/json")
-
-    emby_dir = "/target-emby-config"
-    if os.path.exists(emby_dir):
-        wrapper = os.path.join(emby_dir, "ffmpeg-wrapper.sh")
-        preinit = os.path.join(emby_dir, "00-emby-preinit.sh")
-        if not os.path.exists(wrapper) or os.path.isdir(wrapper):
-            return Response(content='{"status": "unhealthy", "reason": "Emby ffmpeg-wrapper.sh missing or is a directory"}', status_code=503, media_type="application/json")
-        if not os.path.exists(preinit) or os.path.isdir(preinit):
-            return Response(content='{"status": "unhealthy", "reason": "Emby 00-emby-preinit.sh missing or is a directory"}', status_code=503, media_type="application/json")
-
     return {"status": "healthy"}
 
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend"))
@@ -113,44 +97,6 @@ async def web_middleware(request: Request, call_next):
 
     return await call_next(request)
 
-# Dedicated FastAPI app for Jellyfin Proxy (Port 6796)
-jf_app = FastAPI(title="BlackBarr Dedicated Jellyfin Proxy")
-jf_app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@jf_app.websocket("/{path:path}")
-async def jf_websocket_route(websocket: WebSocket, path: str):
-    default_jellyfin = os.getenv("TARGET_SERVER_URL", "http://localhost:8096")
-    await proxy_websocket(websocket, default_jellyfin, "target_server_url", "Jellyfin")
-
-@jf_app.middleware("http")
-async def jf_routing_middleware(request: Request, call_next):
-    return await reverse_proxy_handler(request)
-
-# Dedicated FastAPI app for Emby Proxy (Port 6797)
-emby_app = FastAPI(title="BlackBarr Dedicated Emby Proxy")
-emby_app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@emby_app.websocket("/{path:path}")
-async def emby_websocket_route(websocket: WebSocket, path: str):
-    default_emby = os.getenv("TARGET_EMBY_URL", "http://localhost:8096")
-    await proxy_websocket(websocket, default_emby, "target_emby_url", "Emby")
-
-@emby_app.middleware("http")
-async def emby_routing_middleware(request: Request, call_next):
-    return await reverse_proxy_emby_handler(request)
-
 def make_dual_stack_socket(port: int):
     import socket
     sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
@@ -165,30 +111,13 @@ def make_dual_stack_socket(port: int):
 async def start_servers():
     import uvicorn
     port_web = int(os.getenv("PORT", os.getenv("WEB_PORT", "6795")))
-    port_jf = int(os.getenv("JELLYFIN_PORT", "6796"))
-    port_emby = int(os.getenv("EMBY_PORT", "6797"))
 
     config_web = uvicorn.Config(app, log_level="info")
-    config_jf = uvicorn.Config(jf_app, log_level="info")
-    config_emby = uvicorn.Config(emby_app, log_level="info")
-
     server_web = uvicorn.Server(config_web)
-    server_jf = uvicorn.Server(config_jf)
-    server_emby = uvicorn.Server(config_emby)
-
     sock_web = make_dual_stack_socket(port_web)
-    sock_jf = make_dual_stack_socket(port_jf)
-    sock_emby = make_dual_stack_socket(port_emby)
 
     logger.info(f"Starting BlackBarr Web Management UI on port {port_web} (Dual-Stack IPv4/IPv6)")
-    logger.info(f"Starting BlackBarr Dedicated Jellyfin Proxy on port {port_jf} (Dual-Stack IPv4/IPv6)")
-    logger.info(f"Starting BlackBarr Dedicated Emby Proxy on port {port_emby} (Dual-Stack IPv4/IPv6)")
-
-    await asyncio.gather(
-        server_web.serve(sockets=[sock_web]),
-        server_jf.serve(sockets=[sock_jf]),
-        server_emby.serve(sockets=[sock_emby])
-    )
+    await server_web.serve(sockets=[sock_web])
 
 if __name__ == "__main__":
     asyncio.run(start_servers())
