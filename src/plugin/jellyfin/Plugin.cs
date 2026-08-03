@@ -30,7 +30,7 @@ namespace Jellyfin.Plugin.BlackBarrHelper
             {
                 new PluginPageInfo
                 {
-                    Name = Name,
+                    Name = "BlackBarrHelper",
                     EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html"
                 }
             };

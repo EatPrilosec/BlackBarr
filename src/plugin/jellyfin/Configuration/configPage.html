@@ -5,10 +5,10 @@
     <title>BlackBarr Helper Configuration</title>
 </head>
 <body>
-    <div id="blackbarrConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+    <div id="BlackBarrHelperConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
         <div data-role="content">
             <div class="content-primary">
-                <form id="blackbarrConfigurationForm">
+                <form id="BlackBarrHelperConfigForm">
                     <div class="sectionTitleContainer flex align-items-center flex-grow">
                         <h2 class="sectionTitle">BlackBarr Helper Options</h2>
                     </div>
@@ -16,7 +16,7 @@
                     <div class="inputContainer">
                         <label class="inputLabel" for="txtBlackBarrUrl">BlackBarr API Server URL:</label>
                         <input id="txtBlackBarrUrl" name="txtBlackBarrUrl" type="text" is="emby-input" required />
-                        <div class="fieldDescription">Base URL of your BlackBarr container (e.g. http://blackbarr:6795 or http://localhost:6795).</div>
+                        <div class="fieldDescription">Base URL of your BlackBarr container (e.g. http://blackbarr:6795).</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withFieldDescription">
@@ -43,32 +43,34 @@
         </div>
 
         <script type="text/javascript">
-            var BlackBarrConfigurationPage = {
-                pluginUniqueId: 'b598b9e4-6a2c-476b-9c71-2191419736c4'
-            };
+            (function () {
+                const pluginId = 'b598b9e4-6a2c-476b-9c71-2191419736c4';
 
-            $('#blackbarrConfigurationPage').on('pageshow', function () {
-                Dashboard.showLoadingMsg();
-                ApiClient.getPluginConfiguration(BlackBarrConfigurationPage.pluginUniqueId).then(function (config) {
-                    $('#txtBlackBarrUrl').val(config.BlackBarrUrl || 'http://blackbarr:6795');
-                    $('#chkForceTranscodeCropped').prop('checked', config.ForceTranscodeCropped !== false);
-                    $('#chkForceTranscodeAll').prop('checked', config.ForceTranscodeAll === true);
-                    Dashboard.hideLoadingMsg();
-                });
-            });
-
-            $('#blackbarrConfigurationForm').on('submit', function () {
-                Dashboard.showLoadingMsg();
-                ApiClient.getPluginConfiguration(BlackBarrConfigurationPage.pluginUniqueId).then(function (config) {
-                    config.BlackBarrUrl = $('#txtBlackBarrUrl').val();
-                    config.ForceTranscodeCropped = $('#chkForceTranscodeCropped').prop('checked');
-                    config.ForceTranscodeAll = $('#chkForceTranscodeAll').prop('checked');
-                    ApiClient.updatePluginConfiguration(BlackBarrConfigurationPage.pluginUniqueId, config).then(function (result) {
-                        Dashboard.processPluginConfigurationUpdateResult(result);
+                document.querySelector('#BlackBarrHelperConfigPage').addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        document.querySelector('#txtBlackBarrUrl').value = config.BlackBarrUrl || 'http://blackbarr:6795';
+                        document.querySelector('#chkForceTranscodeCropped').checked = config.ForceTranscodeCropped !== false;
+                        document.querySelector('#chkForceTranscodeAll').checked = config.ForceTranscodeAll === true;
+                        Dashboard.hideLoadingMsg();
                     });
                 });
-                return false;
-            });
+
+                document.querySelector('#BlackBarrHelperConfigForm').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        config.BlackBarrUrl = document.querySelector('#txtBlackBarrUrl').value;
+                        config.ForceTranscodeCropped = document.querySelector('#chkForceTranscodeCropped').checked;
+                        config.ForceTranscodeAll = document.querySelector('#chkForceTranscodeAll').checked;
+
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+                    return false;
+                });
+            })();
         </script>
     </div>
 </body>
