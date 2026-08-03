@@ -66,19 +66,12 @@ if [[ -n "$INPUT_FILE" ]] && command -v curl >/dev/null 2>&1; then
     # Try 127.0.0.1 IPv4 loopback first, then localhost, then blackbarr bridge network
     RES=$(curl -G -s --data-urlencode "path=$INPUT_FILE" "http://127.0.0.1:6795/api/crop_val" || curl -G -s --data-urlencode "path=$INPUT_FILE" "http://localhost:6795/api/crop_val" || curl -G -s --data-urlencode "path=$INPUT_FILE" "http://blackbarr:6795/api/crop_val" || true)
     CROP_VAL=$(echo "$RES" | grep -o 'crop=[^"]*' || true)
+    CROP_VAL="${CROP_VAL#crop=}"
 fi
 
 # If no crop value found in DB, run original ffmpeg command untouched
 if [[ -z "$CROP_VAL" ]]; then
     exec "$REAL_FFMPEG" "$@"
-fi
-
-# Format crop filter string
-# CROP_VAL can be "1920:800:0:140" or "crop=1920:800:0:140"
-if [[ "$CROP_VAL" =~ ^crop= ]]; then
-    CROP_FILTER="${CROP_VAL},setsar=1"
-else
-    CROP_FILTER="crop=${CROP_VAL},setsar=1"
 fi
 
 # Detect hardware acceleration type from arguments
@@ -92,20 +85,23 @@ for arg in "$@"; do
     if [[ "$arg" == *"vaapi"* ]]; then HAS_VAAPI=1; fi
 done
 
-# Adapt crop filter for QSV, CUDA, or VAAPI hardware pipelines if needed
-if (( HAS_VAAPI )); then
-    RAW_CROP="${CROP_VAL#crop=}"
-    CROP_FILTER="hwdownload,format=nv12,crop=${RAW_CROP},setsar=1,hwupload"
-elif (( HAS_QSV )); then
-    RAW_CROP="${CROP_VAL#crop=}"
-    IFS=':' read -r CW CH CX CY <<< "$RAW_CROP"
-    if [[ -n "$CW" ]] && [[ -n "$CH" ]]; then
-        QSV_CROP="vpp_qsv=crop_w=$CW:crop_h=$CH:crop_x=${CX:-0}:crop_y=${CY:-0},setsar=1"
-        CROP_FILTER="$QSV_CROP"
+# Adapt crop / normalization filter for QSV, CUDA, or VAAPI hardware pipelines
+if [[ "$CROP_VAL" == "setsar=1" ]]; then
+    if (( HAS_VAAPI )); then
+        CROP_FILTER="hwdownload,format=nv12,setsar=1,hwupload"
+    else
+        CROP_FILTER="setsar=1"
     fi
 else
-    if [[ "$CROP_VAL" =~ ^crop= ]]; then
-        CROP_FILTER="${CROP_VAL},setsar=1"
+    if (( HAS_VAAPI )); then
+        CROP_FILTER="hwdownload,format=nv12,crop=${CROP_VAL},setsar=1,hwupload"
+    elif (( HAS_QSV )); then
+        IFS=':' read -r CW CH CX CY <<< "$CROP_VAL"
+        if [[ -n "$CW" ]] && [[ -n "$CH" ]]; then
+            CROP_FILTER="vpp_qsv=crop_w=$CW:crop_h=$CH:crop_x=${CX:-0}:crop_y=${CY:-0},setsar=1"
+        else
+            CROP_FILTER="crop=${CROP_VAL},setsar=1"
+        fi
     else
         CROP_FILTER="crop=${CROP_VAL},setsar=1"
     fi
