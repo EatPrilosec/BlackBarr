@@ -31,9 +31,9 @@ class CropScanner:
         data = f"{file_path}:{size}:{mtime}"
         return hashlib.md5(data.encode("utf-8")).hexdigest()
 
-    async def probe_media(self, file_path: str) -> Tuple[float, int, int, bool]:
+    async def probe_media(self, file_path: str) -> Tuple[float, int, int, bool, int, int]:
         """
-        Runs ffprobe to retrieve duration (seconds), width, height, and HDR status.
+        Runs ffprobe to retrieve duration (seconds), width, height, HDR status, and SAR ratio.
         """
         cmd = [
             "ffprobe",
@@ -53,13 +53,14 @@ class CropScanner:
             stdout, stderr = await proc.communicate()
             if proc.returncode != 0:
                 logger.warning(f"ffprobe failed for {file_path}: {stderr.decode()}")
-                return 0.0, 0, 0, False
+                return 0.0, 0, 0, False, 1, 1
 
             data = json.loads(stdout.decode("utf-8", errors="ignore"))
             duration = float(data.get("format", {}).get("duration", 0.0))
             
             width, height = 0, 0
             is_hdr = False
+            sar_num, sar_den = 1, 1
 
             for stream in data.get("streams", []):
                 if stream.get("codec_type") == "video":
@@ -72,12 +73,20 @@ class CropScanner:
 
                     if color_transfer in ["smpte2084", "arib-std-b67"] or "bt2020" in color_space or "10le" in pix_fmt:
                         is_hdr = True
+
+                    sar_str = stream.get("sample_aspect_ratio", "1:1")
+                    if sar_str and ":" in sar_str:
+                        parts = sar_str.split(":")
+                        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                            sn, sd = int(parts[0]), int(parts[1])
+                            if sn > 0 and sd > 0:
+                                sar_num, sar_den = sn, sd
                     break
 
-            return duration, width, height, is_hdr
+            return duration, width, height, is_hdr, sar_num, sar_den
         except Exception as e:
             logger.error(f"Error running ffprobe on {file_path}: {e}")
-            return 0.0, 0, 0, False
+            return 0.0, 0, 0, False, 1, 1
 
     async def detect_crop_for_timestamp(self, file_path: str, timestamp_sec: float, limit: str, sample_frames: int = 20) -> Optional[Tuple[int, int, int, int]]:
         """
@@ -133,7 +142,7 @@ class CropScanner:
         """
         Analyzes media file and returns (crop_val, is_hdr, status).
         """
-        duration, orig_w, orig_h, is_hdr = await self.probe_media(file_path)
+        duration, orig_w, orig_h, is_hdr, sar_num, sar_den = await self.probe_media(file_path)
         if orig_w == 0 or orig_h == 0:
             return None, is_hdr, "ERROR"
 
@@ -196,6 +205,13 @@ class CropScanner:
                 logger.info(f"[Scanner] Normalizing asymmetric top-edge noise ({w}:{h}:{x}:{y}) -> ({w}:{h+y}:0:0) for {file_path}")
                 h = h + y
                 y = 0
+
+        # Anamorphic SAR Full-Frame Normalization:
+        if sar_num > 0 and sar_den > 0 and sar_num != sar_den:
+            expected_sar_h = round(orig_h * (sar_num / sar_den))
+            if y == 0 and x == 0 and abs(h - expected_sar_h) <= 12:
+                logger.info(f"[Scanner] Anamorphic SAR full-frame media detected for {file_path} (SAR {sar_num}:{sar_den}, h={h} ~ expected {expected_sar_h}). Normalizing to NO CROP.")
+                return None, is_hdr, "PROCESSED"
 
         # Check if crop is virtually full frame (no significant letterboxing or pillarboxing detected)
         if abs(w - orig_w) <= 8 and abs(h - orig_h) <= 8:
