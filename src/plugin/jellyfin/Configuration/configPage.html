@@ -63,25 +63,26 @@
 
                 document.querySelector('#btnTestConnection').addEventListener('click', function () {
                     const baseUrl = document.querySelector('#txtBlackBarrUrl').value.trim();
-
                     Dashboard.showLoadingMsg();
-                    ApiClient.ajax({
-                        type: 'GET',
-                        url: ApiClient.getUrl('BlackBarr/TestConnection?Url=' + encodeURIComponent(baseUrl))
-                    }).then(function (result) {
-                        Dashboard.hideLoadingMsg();
-                        var resData = result;
-                        if (typeof result === 'string') {
-                            try { resData = JSON.parse(result); } catch (e) {}
+
+                    const testUrl = ApiClient.getUrl('BlackBarr/TestConnection') + '?Url=' + encodeURIComponent(baseUrl) + '&_v=' + Date.now();
+
+                    fetch(testUrl, {
+                        headers: {
+                            'X-Emby-Token': (typeof ApiClient !== 'undefined' && ApiClient.accessToken) ? ApiClient.accessToken() : ''
                         }
-                        var isSuccess = resData && (resData.Success === true || resData.success === true);
-                        var body = resData ? (resData.Message || resData.message || JSON.stringify(resData)) : 'No response from server.';
-                        var finalMsg = isSuccess ? ('✅ SUCCESS: ' + body) : ('❌ FAILED: ' + body);
-                        Dashboard.alert(finalMsg);
+                    }).then(function (res) {
+                        return res.json();
+                    }).then(function (data) {
+                        Dashboard.hideLoadingMsg();
+                        if (data && (data.Success === true || data.success === true)) {
+                            Dashboard.alert('✅ SUCCESS: ' + (data.Message || data.message || 'Connected to BlackBarr API!'));
+                        } else {
+                            Dashboard.alert('❌ FAILED: ' + (data ? (data.Message || data.message || JSON.stringify(data)) : 'Unknown error'));
+                        }
                     }).catch(function (err) {
                         Dashboard.hideLoadingMsg();
-                        var msg = (err && err.responseText) ? err.responseText : (err ? (err.message || JSON.stringify(err)) : 'Unknown error');
-                        Dashboard.alert('❌ FAILED to communicate with Jellyfin backend: ' + msg);
+                        Dashboard.alert('❌ FAILED: ' + (err.message || err));
                     });
                 });
 
