@@ -63,28 +63,23 @@
 
                 document.querySelector('#btnTestConnection').addEventListener('click', function () {
                     const baseUrl = document.querySelector('#txtBlackBarrUrl').value.trim();
-                    if (!baseUrl) {
-                        Dashboard.alert({ title: 'Error', message: 'Please enter a valid BlackBarr API URL.' });
-                        return;
-                    }
+
                     Dashboard.showLoadingMsg();
                     ApiClient.ajax({
                         type: 'GET',
                         url: ApiClient.getUrl('Branding/Configuration?TestConnection=1&Url=' + encodeURIComponent(baseUrl))
                     }).then(function (result) {
                         Dashboard.hideLoadingMsg();
+                        var resData = result;
                         if (typeof result === 'string') {
-                            try { result = JSON.parse(result); } catch (e) {}
+                            try { resData = JSON.parse(result); } catch (e) {}
                         }
-                        if (result && (result.success || result.Success)) {
-                            Dashboard.alert({ title: 'Success', message: result.message || result.Message });
-                        } else {
-                            Dashboard.alert({ title: 'Connection Failed', message: (result ? (result.message || result.Message) : 'Unknown response') });
-                        }
+                        var msg = resData ? (resData.Message || resData.message || 'Connection test completed.') : 'No response from server.';
+                        Dashboard.alert(msg);
                     }).catch(function (err) {
                         Dashboard.hideLoadingMsg();
                         var msg = (err && err.responseText) ? err.responseText : (err ? (err.message || JSON.stringify(err)) : 'Unknown error');
-                        Dashboard.alert({ title: 'Error', message: 'Failed to communicate with Jellyfin backend: ' + msg });
+                        Dashboard.alert('Error communicating with server: ' + msg);
                     });
                 });
 
