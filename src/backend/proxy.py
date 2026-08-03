@@ -113,7 +113,7 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
     headers.pop("host", None)
     
     body = await request.body()
-    is_playback_info = "PlaybackInfo" in path or "/Sessions" in path
+    is_playback_info = "PlaybackInfo" in path
     
     should_force = False
     item_id = None
@@ -174,6 +174,8 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
         out_headers.pop("transfer-encoding", None)
         out_headers.pop("content-encoding", None)  # Stripping content-encoding fixes black/grey blank page!
         out_headers.pop("content-security-policy", None)
+        out_headers.pop("server", None)
+        out_headers.pop("date", None)
 
         if is_playback_info and should_force and resp.status_code == 200:
             resp_body = await resp.aread()
