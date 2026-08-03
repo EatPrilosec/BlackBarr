@@ -44,10 +44,7 @@ flowchart TD
 
 ## 🐳 Docker Setup (Recommended)
 
-> [!IMPORTANT]
-> **Matching Volume Mount Paths**: To ensure database crop lookups match between BlackBarr, Jellyfin, and Emby, **all containers must mount the media library at the exact same target path** (e.g. `/Storage/Media/Library:/Storage/Media/Library:ro`). If BlackBarr scans `/media` while Jellyfin or Emby access `/Storage/Media/Library`, path lookup queries will fail to match crop entries in the database.
-
-Here is a production-ready `docker-compose.yml` deploying BlackBarr alongside Jellyfin, Emby, and VAAPI hardware acceleration:
+Here is a production-ready `docker-compose.yml` deploying BlackBarr alongside Jellyfin, Emby, and VAAPI hardware acceleration.
 
 ```yaml
 version: '3.8'
