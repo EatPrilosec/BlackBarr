@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -16,7 +17,7 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
     public class PlaybackInfoMiddleware : IMiddleware
     {
         private readonly ILogger<PlaybackInfoMiddleware> _logger;
-        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
 
         public PlaybackInfoMiddleware(ILogger<PlaybackInfoMiddleware> logger)
         {
@@ -128,9 +129,9 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
 
-            string targetUrl = context.Request.Query["Url"].ToString();
+            string userUrl = context.Request.Query["Url"].ToString();
 
-            if (string.IsNullOrWhiteSpace(targetUrl))
+            if (string.IsNullOrWhiteSpace(userUrl))
             {
                 try
                 {
@@ -143,40 +144,55 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
                     if (!string.IsNullOrWhiteSpace(reqBody))
                     {
                         var reqDoc = JsonNode.Parse(reqBody);
-                        targetUrl = reqDoc?["Url"]?.ToString() ?? string.Empty;
+                        userUrl = reqDoc?["Url"]?.ToString() ?? string.Empty;
+                    }
+                }
+                catch
+                {
+                    // Ignore body parse errors
+                }
+            }
+
+            var candidates = new List<string>();
+            if (!string.IsNullOrWhiteSpace(userUrl))
+            {
+                candidates.Add(userUrl);
+            }
+            var savedUrl = Plugin.Instance?.Configuration?.BlackBarrUrl;
+            if (!string.IsNullOrWhiteSpace(savedUrl) && !candidates.Contains(savedUrl))
+            {
+                candidates.Add(savedUrl);
+            }
+            if (!candidates.Contains("http://127.0.0.1:6795")) candidates.Add("http://127.0.0.1:6795");
+            if (!candidates.Contains("http://blackbarr:6795")) candidates.Add("http://blackbarr:6795");
+            if (!candidates.Contains("http://localhost:6795")) candidates.Add("http://localhost:6795");
+
+            string lastError = "No candidate URLs responded.";
+            foreach (var url in candidates)
+            {
+                var healthUrl = url.TrimEnd('/') + "/health";
+                try
+                {
+                    var resp = await _httpClient.GetAsync(healthUrl);
+                    if (resp.IsSuccessStatusCode)
+                    {
+                        var resJson = $"{{\"Success\":true,\"Message\":\"Successfully connected to BlackBarr server at {healthUrl}\",\"TestedUrl\":\"{url.Replace("\"", "'")}\"}}";
+                        await context.Response.WriteAsync(resJson);
+                        return;
+                    }
+                    else
+                    {
+                        lastError = $"Server at {healthUrl} returned HTTP {(int)resp.StatusCode} ({resp.ReasonPhrase})";
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "[BlackBarr Helper] Failed to parse TestConnection request body");
+                    lastError = $"Failed to reach {healthUrl}: {ex.Message.Replace("\"", "'")}";
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(targetUrl))
-            {
-                targetUrl = Plugin.Instance?.Configuration?.BlackBarrUrl ?? "http://127.0.0.1:6795";
-            }
-
-            var healthUrl = targetUrl.TrimEnd('/') + "/health";
-            try
-            {
-                var resp = await _httpClient.GetAsync(healthUrl);
-                string resJson;
-                if (resp.IsSuccessStatusCode)
-                {
-                    resJson = $"{{\"Success\":true,\"Message\":\"Successfully connected to BlackBarr server at {healthUrl}\"}}";
-                }
-                else
-                {
-                    resJson = $"{{\"Success\":false,\"Message\":\"BlackBarr server returned HTTP {(int)resp.StatusCode} ({resp.ReasonPhrase}) at {healthUrl}\"}}";
-                }
-                await context.Response.WriteAsync(resJson);
-            }
-            catch (Exception ex)
-            {
-                var resJson = $"{{\"Success\":false,\"Message\":\"Jellyfin server failed to reach BlackBarr at {healthUrl}: {ex.Message.Replace("\"", "'")}\"}}";
-                await context.Response.WriteAsync(resJson);
-            }
+            var failJson = $"{{\"Success\":false,\"Message\":\"{lastError.Replace("\"", "'")}\"}}";
+            await context.Response.WriteAsync(failJson);
         }
 
         private async Task<bool> CheckItemCroppedAsync(string blackbarrUrl, string filePath)
