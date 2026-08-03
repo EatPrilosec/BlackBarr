@@ -49,7 +49,9 @@ def override_bitrate_in_query(query_str: str, target_bitrate: str = "140000000")
         return query_str
     import re
     pattern = r"((?:[M|m]axStreamingBitrate|[V|v]ideoBitrate|[M|m]axBitrate)=)\d+"
-    return re.sub(pattern, rf"\g<1>{target_bitrate}", query_str)
+    res = re.sub(pattern, rf"\g<1>{target_bitrate}", query_str)
+    res = re.sub(r"SubtitleMethod=Hls", "SubtitleMethod=External", res, flags=re.IGNORECASE)
+    return res
 
 def mutate_playback_info_request_payload(body_bytes: bytes) -> bytes:
     """

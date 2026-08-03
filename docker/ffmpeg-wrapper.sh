@@ -84,32 +84,44 @@ if [ -n "$INPUT_FILE" ]; then
     done
 fi
 
-# Rewrite low max_muxing_queue_size values (e.g. 2048) to 10240 to prevent subtitle stream buffer overflow crashes
-HAS_QUEUE_ARG=0
-PREV=""
-for arg in "$@"; do
-    if [ "$PREV" = "-max_muxing_queue_size" ]; then
-        if [ "$arg" -lt 10240 ] 2>/dev/null; then
-            set -- "$@" "10240"
-        else
-            set -- "$@" "$arg"
-        fi
-        HAS_QUEUE_ARG=1
-    else
-        case "$arg" in
-            -max_muxing_queue_size)
-                set -- "$@" "$arg"
-                ;;
-            *)
-                set -- "$@" "$arg"
-                ;;
-        esac
-    fi
-    PREV="$arg"
+# Rebuild argument list:
+# 1. Remove any existing -max_muxing_queue_size and its following value
+# 2. Inject -max_muxing_queue_size 10240 immediately after -i <input_file> to ensure it is placed as an output option (not trailing)
+SKIP_NEXT=0
+IS_NEXT_INPUT_VAL=0
+INJECTED_QUEUE=0
+TOTAL=$#
+COUNT=0
+
+while [ "$COUNT" -lt "$TOTAL" ]; do
+    arg="$1"
     shift
+    COUNT=$((COUNT + 1))
+
+    if [ "$SKIP_NEXT" -eq 1 ]; then
+        SKIP_NEXT=0
+        continue
+    fi
+
+    if [ "$arg" = "-max_muxing_queue_size" ]; then
+        SKIP_NEXT=1
+        continue
+    fi
+
+    set -- "$@" "$arg"
+
+    if [ "$IS_NEXT_INPUT_VAL" -eq 1 ]; then
+        IS_NEXT_INPUT_VAL=0
+        if [ "$INJECTED_QUEUE" -eq 0 ]; then
+            set -- "$@" "-max_muxing_queue_size" "10240"
+            INJECTED_QUEUE=1
+        fi
+    elif [ "$arg" = "-i" ]; then
+        IS_NEXT_INPUT_VAL=1
+    fi
 done
 
-if [ "$HAS_QUEUE_ARG" -eq 0 ]; then
+if [ "$INJECTED_QUEUE" -eq 0 ]; then
     set -- "$@" "-max_muxing_queue_size" "10240"
 fi
 
