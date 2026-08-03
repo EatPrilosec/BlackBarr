@@ -45,10 +45,12 @@
           "targetAlias": "net9.0",
           "dependencies": {
             "Jellyfin.Controller": {
+              "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "target": "Package",
               "version": "[10.11.11, )"
             },
             "Jellyfin.Model": {
+              "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "target": "Package",
               "version": "[10.11.11, )"
             }

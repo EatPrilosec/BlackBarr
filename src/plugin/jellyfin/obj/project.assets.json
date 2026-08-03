@@ -8,7 +8,7 @@
           "lib/net6.0/BitFaster.Caching.dll": {}
         },
         "runtime": {
-          "lib/net6.0/BitFaster.Caching.dll": {}
+          "lib/net6.0/_._": {}
         }
       },
       "Diacritics/4.0.17": {
@@ -17,7 +17,7 @@
           "lib/net9.0/Diacritics.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Diacritics.dll": {}
+          "lib/net9.0/_._": {}
         }
       },
       "ICU4N/60.1.0-alpha.356": {
@@ -30,7 +30,7 @@
           "lib/netstandard2.0/ICU4N.dll": {}
         },
         "runtime": {
-          "lib/netstandard2.0/ICU4N.dll": {}
+          "lib/netstandard2.0/_._": {}
         }
       },
       "ICU4N.Transliterator/60.1.0-alpha.356": {
@@ -42,7 +42,7 @@
           "lib/netstandard2.0/ICU4N.Transliterator.dll": {}
         },
         "runtime": {
-          "lib/netstandard2.0/ICU4N.Transliterator.dll": {}
+          "lib/netstandard2.0/_._": {}
         }
       },
       "J2N/2.0.0": {
@@ -51,7 +51,7 @@
           "lib/net6.0/J2N.dll": {}
         },
         "runtime": {
-          "lib/net6.0/J2N.dll": {}
+          "lib/net6.0/_._": {}
         }
       },
       "Jellyfin.Common/10.11.11": {
@@ -65,7 +65,7 @@
           "lib/net9.0/MediaBrowser.Common.dll": {}
         },
         "runtime": {
-          "lib/net9.0/MediaBrowser.Common.dll": {}
+          "lib/net9.0/_._": {}
         },
         "frameworkReferences": [
           "Microsoft.AspNetCore.App"
@@ -87,7 +87,7 @@
           "lib/net9.0/MediaBrowser.Controller.dll": {}
         },
         "runtime": {
-          "lib/net9.0/MediaBrowser.Controller.dll": {}
+          "lib/net9.0/_._": {}
         }
       },
       "Jellyfin.Data/10.11.11": {
@@ -100,7 +100,7 @@
           "lib/net9.0/Jellyfin.Data.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Jellyfin.Data.dll": {}
+          "lib/net9.0/_._": {}
         }
       },
       "Jellyfin.Database.Implementations/10.11.11": {
@@ -115,7 +115,7 @@
           }
         },
         "runtime": {
-          "lib/net9.0/Jellyfin.Database.Implementations.dll": {
+          "lib/net9.0/_._": {
             "related": ".runtimeconfig.json"
           }
         }
@@ -130,7 +130,7 @@
           "lib/net9.0/Jellyfin.Extensions.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Jellyfin.Extensions.dll": {}
+          "lib/net9.0/_._": {}
         }
       },
       "Jellyfin.MediaEncoding.Keyframes/10.11.11": {
@@ -143,7 +143,7 @@
           "lib/net9.0/Jellyfin.MediaEncoding.Keyframes.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Jellyfin.MediaEncoding.Keyframes.dll": {}
+          "lib/net9.0/_._": {}
         }
       },
       "Jellyfin.Model/10.11.11": {
@@ -159,7 +159,7 @@
           "lib/net9.0/MediaBrowser.Model.dll": {}
         },
         "runtime": {
-          "lib/net9.0/MediaBrowser.Model.dll": {}
+          "lib/net9.0/_._": {}
         },
         "frameworkReferences": [
           "Microsoft.AspNetCore.App"
@@ -175,7 +175,7 @@
           "lib/net9.0/Emby.Naming.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Emby.Naming.dll": {}
+          "lib/net9.0/_._": {}
         }
       },
       "Microsoft.EntityFrameworkCore/9.0.11": {
@@ -190,7 +190,7 @@
           "lib/net8.0/Microsoft.EntityFrameworkCore.dll": {}
         },
         "runtime": {
-          "lib/net8.0/Microsoft.EntityFrameworkCore.dll": {}
+          "lib/net8.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/Microsoft.EntityFrameworkCore.props": {}
@@ -202,7 +202,7 @@
           "lib/net8.0/Microsoft.EntityFrameworkCore.Abstractions.dll": {}
         },
         "runtime": {
-          "lib/net8.0/Microsoft.EntityFrameworkCore.Abstractions.dll": {}
+          "lib/net8.0/_._": {}
         }
       },
       "Microsoft.EntityFrameworkCore.Analyzers/9.0.11": {
@@ -220,7 +220,7 @@
           "lib/net8.0/Microsoft.EntityFrameworkCore.Relational.dll": {}
         },
         "runtime": {
-          "lib/net8.0/Microsoft.EntityFrameworkCore.Relational.dll": {}
+          "lib/net8.0/_._": {}
         }
       },
       "Microsoft.Extensions.Caching.Abstractions/9.0.11": {
@@ -232,7 +232,7 @@
           "lib/net9.0/Microsoft.Extensions.Caching.Abstractions.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.Caching.Abstractions.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
@@ -251,7 +251,7 @@
           "lib/net9.0/Microsoft.Extensions.Caching.Memory.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.Caching.Memory.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
@@ -266,7 +266,7 @@
           "lib/net9.0/Microsoft.Extensions.Configuration.Abstractions.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.Configuration.Abstractions.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
@@ -281,7 +281,7 @@
           "lib/net9.0/Microsoft.Extensions.Configuration.Binder.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.Configuration.Binder.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/netstandard2.0/Microsoft.Extensions.Configuration.Binder.targets": {}
@@ -296,7 +296,7 @@
           "lib/net9.0/Microsoft.Extensions.DependencyInjection.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.DependencyInjection.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
@@ -308,7 +308,7 @@
           "lib/net9.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
@@ -325,7 +325,7 @@
           "lib/net9.0/Microsoft.Extensions.Logging.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.Logging.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
@@ -340,7 +340,7 @@
           "lib/net9.0/Microsoft.Extensions.Logging.Abstractions.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.Logging.Abstractions.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/Microsoft.Extensions.Logging.Abstractions.targets": {}
@@ -356,7 +356,7 @@
           "lib/net9.0/Microsoft.Extensions.Options.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.Options.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/Microsoft.Extensions.Options.targets": {}
@@ -368,7 +368,7 @@
           "lib/net9.0/Microsoft.Extensions.Primitives.dll": {}
         },
         "runtime": {
-          "lib/net9.0/Microsoft.Extensions.Primitives.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
@@ -398,7 +398,7 @@
           "lib/netstandard2.0/NEbml.Core.dll": {}
         },
         "runtime": {
-          "lib/netstandard2.0/NEbml.Core.dll": {}
+          "lib/netstandard2.0/_._": {}
         }
       },
       "Polly/8.6.5": {
@@ -412,7 +412,7 @@
           }
         },
         "runtime": {
-          "lib/net6.0/Polly.dll": {
+          "lib/net6.0/_._": {
             "related": ".pdb"
           }
         }
@@ -425,7 +425,7 @@
           }
         },
         "runtime": {
-          "lib/net8.0/Polly.Core.dll": {
+          "lib/net8.0/_._": {
             "related": ".pdb"
           }
         }
@@ -457,7 +457,7 @@
           "lib/net9.0/System.Text.Json.dll": {}
         },
         "runtime": {
-          "lib/net9.0/System.Text.Json.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/System.Text.Json.targets": {}
@@ -469,7 +469,7 @@
           "lib/net9.0/System.Threading.Tasks.Dataflow.dll": {}
         },
         "runtime": {
-          "lib/net9.0/System.Threading.Tasks.Dataflow.dll": {}
+          "lib/net9.0/_._": {}
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
@@ -1348,10 +1348,12 @@
         "targetAlias": "net9.0",
         "dependencies": {
           "Jellyfin.Controller": {
+            "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
             "target": "Package",
             "version": "[10.11.11, )"
           },
           "Jellyfin.Model": {
+            "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
             "target": "Package",
             "version": "[10.11.11, )"
           }

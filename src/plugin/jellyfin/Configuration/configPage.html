@@ -70,7 +70,7 @@
                     Dashboard.showLoadingMsg();
                     ApiClient.ajax({
                         type: 'POST',
-                        url: ApiClient.getUrl('BlackBarrHelper/TestConnection'),
+                        url: ApiClient.getUrl('Items/00000000000000000000000000000000/PlaybackInfo?TestConnection=1'),
                         data: JSON.stringify({ Url: baseUrl }),
                         contentType: 'application/json'
                     }).then(function (result) {
@@ -78,10 +78,10 @@
                         if (typeof result === 'string') {
                             try { result = JSON.parse(result); } catch (e) {}
                         }
-                        if (result.success || result.Success) {
+                        if (result && (result.success || result.Success)) {
                             Dashboard.alert({ title: 'Success', message: result.message || result.Message });
                         } else {
-                            Dashboard.alert({ title: 'Connection Failed', message: result.message || result.Message });
+                            Dashboard.alert({ title: 'Connection Failed', message: (result ? (result.message || result.Message) : 'Unknown response') });
                         }
                     }).catch(function (err) {
                         Dashboard.hideLoadingMsg();

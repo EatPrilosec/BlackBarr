@@ -16,7 +16,7 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
     public class PlaybackInfoMiddleware : IMiddleware
     {
         private readonly ILogger<PlaybackInfoMiddleware> _logger;
-        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
         public PlaybackInfoMiddleware(ILogger<PlaybackInfoMiddleware> logger)
         {
@@ -26,6 +26,14 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)
         {
             var path = context.Request.Path.Value ?? string.Empty;
+
+            if (path.Contains("TestConnection", StringComparison.OrdinalIgnoreCase) || path.Contains("blackbarr", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation("[BlackBarr Helper] Intercepted test connection request at path: {Path}", path);
+                await HandleTestConnectionAsync(context);
+                return;
+            }
+
             if (!path.Contains("PlaybackInfo", StringComparison.OrdinalIgnoreCase))
             {
                 await next(context);
@@ -112,6 +120,59 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
             var modifiedBytes = Encoding.UTF8.GetBytes(jsonString);
             context.Response.ContentLength = modifiedBytes.Length;
             await originalBodyStream.WriteAsync(modifiedBytes, 0, modifiedBytes.Length);
+        }
+
+        private async Task HandleTestConnectionAsync(HttpContext context)
+        {
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+
+            string targetUrl = string.Empty;
+
+            try
+            {
+                context.Request.EnableBuffering();
+                context.Request.Body.Position = 0;
+                using var reader = new StreamReader(context.Request.Body, Encoding.UTF8, leaveOpen: true);
+                string reqBody = await reader.ReadToEndAsync();
+                context.Request.Body.Position = 0;
+
+                if (!string.IsNullOrWhiteSpace(reqBody))
+                {
+                    var reqDoc = JsonNode.Parse(reqBody);
+                    targetUrl = reqDoc?["Url"]?.ToString() ?? string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[BlackBarr Helper] Failed to parse TestConnection request body");
+            }
+
+            if (string.IsNullOrWhiteSpace(targetUrl))
+            {
+                targetUrl = Plugin.Instance?.Configuration?.BlackBarrUrl ?? "http://127.0.0.1:6795";
+            }
+
+            var healthUrl = targetUrl.TrimEnd('/') + "/health";
+            try
+            {
+                var resp = await _httpClient.GetAsync(healthUrl);
+                string resJson;
+                if (resp.IsSuccessStatusCode)
+                {
+                    resJson = $"{{\"Success\":true,\"Message\":\"Successfully connected to BlackBarr server at {healthUrl}\"}}";
+                }
+                else
+                {
+                    resJson = $"{{\"Success\":false,\"Message\":\"BlackBarr server returned HTTP {(int)resp.StatusCode} ({resp.ReasonPhrase}) at {healthUrl}\"}}";
+                }
+                await context.Response.WriteAsync(resJson);
+            }
+            catch (Exception ex)
+            {
+                var resJson = $"{{\"Success\":false,\"Message\":\"Jellyfin server failed to reach BlackBarr at {healthUrl}: {ex.Message.Replace("\"", "'")}\"}}";
+                await context.Response.WriteAsync(resJson);
+            }
         }
 
         private async Task<bool> CheckItemCroppedAsync(string blackbarrUrl, string filePath)
