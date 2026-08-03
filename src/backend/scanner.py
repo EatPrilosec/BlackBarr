@@ -321,16 +321,35 @@ class CropScanner:
         self.total_files = len(video_files)
         logger.info(f"Found {self.total_files} video files to process across {len(directories)} directories.")
 
-        for fpath in video_files:
-            if self._stop_event.is_set():
-                logger.info("Scan stopped by user request.")
-                break
-            await self.scan_file(fpath, force=force, deep=deep)
-            self.scanned_files += 1
+        await self._scan_batch(video_files, force=force, deep=deep)
 
         self.is_scanning = False
         self.current_file = ""
         logger.info(f"[{scan_label}] Library scan finished.")
+
+    async def _scan_batch(self, file_paths: List[str], force: bool = False, deep: bool = False):
+        concurrency_str = await get_config("scan_concurrency", "2")
+        try:
+            concurrency = max(1, min(16, int(concurrency_str)))
+        except ValueError:
+            concurrency = 2
+
+        logger.info(f"[CropScanner] Executing batch scan on {len(file_paths)} files with concurrency = {concurrency}")
+
+        sem = asyncio.Semaphore(concurrency)
+
+        async def worker(fpath: str):
+            if self._stop_event.is_set():
+                return
+            async with sem:
+                if self._stop_event.is_set():
+                    return
+                self.current_file = fpath
+                await self.scan_file(fpath, force=force, deep=deep)
+                self.scanned_files += 1
+
+        tasks = [asyncio.create_task(worker(fp)) for fp in file_paths]
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     async def scan_items_by_ids(self, media_ids: List[int], deep: bool = False):
         if self.is_scanning:
@@ -354,12 +373,7 @@ class CropScanner:
         scan_label = "Deep" if deep else "Targeted"
         logger.info(f"Starting [{scan_label}] scan for {self.total_files} items.")
 
-        for fpath in file_paths:
-            if self._stop_event.is_set():
-                logger.info("Scan stopped by user request.")
-                break
-            await self.scan_file(fpath, force=True, deep=deep)
-            self.scanned_files += 1
+        await self._scan_batch(file_paths, force=True, deep=deep)
 
         self.is_scanning = False
         self.current_file = ""
@@ -384,12 +398,7 @@ class CropScanner:
         scan_label = "Deep" if deep else "Filtered"
         logger.info(f"Starting [{scan_label}] scan for {self.total_files} items.")
 
-        for fpath in file_paths:
-            if self._stop_event.is_set():
-                logger.info("Scan stopped by user request.")
-                break
-            await self.scan_file(fpath, force=True, deep=deep)
-            self.scanned_files += 1
+        await self._scan_batch(file_paths, force=True, deep=deep)
 
         self.is_scanning = False
         self.current_file = ""

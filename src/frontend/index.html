@@ -454,13 +454,17 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Sample Keyframe Count</label>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Sample Points</label>
                         <input type="number" id="cfgSampleCount" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Scan Interval (Minutes)</label>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1" title="Parallel files scanned at the same time">Parallel Threads</label>
+                        <input type="number" id="cfgScanConcurrency" min="1" max="16" placeholder="2" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Interval (Mins)</label>
                         <input type="number" id="cfgScanInterval" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                     </div>
                 </div>

@@ -78,6 +78,7 @@ async def init_db():
             "sample_count": "10",
             "deep_scan_sample_count": "15",
             "deep_scan_frame_count": "120",
+            "scan_concurrency": "2",
             "scan_interval_minutes": "60",
             "auto_scan_on_startup": "true"
         }

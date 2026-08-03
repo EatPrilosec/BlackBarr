@@ -240,6 +240,7 @@ async function loadConfig() {
         document.getElementById('cfgSdrLimit').value = config.sdr_crop_limit || "24";
         document.getElementById('cfgHdrLimit').value = config.hdr_crop_limit || "70";
         document.getElementById('cfgSampleCount').value = config.sample_count || "10";
+        document.getElementById('cfgScanConcurrency').value = config.scan_concurrency || "2";
         document.getElementById('cfgScanInterval').value = config.scan_interval_minutes || "60";
         document.getElementById('cfgDeepSampleCount').value = config.deep_scan_sample_count || "15";
         document.getElementById('cfgDeepFrameCount').value = config.deep_scan_frame_count || "120";
@@ -680,6 +681,7 @@ async function handleSettingsSubmit(e) {
         sdr_crop_limit: document.getElementById('cfgSdrLimit').value.trim(),
         hdr_crop_limit: document.getElementById('cfgHdrLimit').value.trim(),
         sample_count: document.getElementById('cfgSampleCount').value.trim(),
+        scan_concurrency: document.getElementById('cfgScanConcurrency').value.trim() || "2",
         scan_interval_minutes: document.getElementById('cfgScanInterval').value.trim(),
         deep_scan_sample_count: document.getElementById('cfgDeepSampleCount').value.trim() || "15",
         deep_scan_frame_count: document.getElementById('cfgDeepFrameCount').value.trim() || "120"
