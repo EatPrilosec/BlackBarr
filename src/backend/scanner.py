@@ -214,13 +214,6 @@ class CropScanner:
                 h = h + y
                 y = 0
 
-        # Anamorphic SAR Full-Frame Normalization:
-        if sar_num > 0 and sar_den > 0 and sar_num != sar_den:
-            expected_sar_h = round(orig_h * (sar_num / sar_den))
-            if y == 0 and x == 0 and abs(h - expected_sar_h) <= 12:
-                logger.info(f"[Scanner] Anamorphic SAR full-frame media detected for {file_path} (SAR {sar_num}:{sar_den}, h={h} ~ expected {expected_sar_h}). Flagging with setsar=1 normalization.")
-                return "setsar=1", is_hdr, "PROCESSED"
-
         # Check if crop is virtually full frame (no significant letterboxing or pillarboxing detected)
         if abs(w - orig_w) <= 8 and abs(h - orig_h) <= 8:
             return None, is_hdr, "PROCESSED"
