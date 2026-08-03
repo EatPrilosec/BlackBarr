@@ -174,6 +174,7 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
         out_headers.pop("transfer-encoding", None)
         out_headers.pop("content-encoding", None)  # Stripping content-encoding fixes black/grey blank page!
         out_headers.pop("content-security-policy", None)
+        out_headers.pop("content-length", None)  # Always strip content-length to prevent ERR_CONTENT_LENGTH_MISMATCH
         out_headers.pop("server", None)
         out_headers.pop("date", None)
 
@@ -189,9 +190,6 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
                 headers=out_headers,
                 media_type=resp.headers.get("content-type")
             )
-
-        if is_playback_info:
-            out_headers.pop("content-length", None)
 
         return StreamingResponse(
             resp.aiter_bytes(),
