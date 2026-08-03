@@ -97,6 +97,7 @@ def mutate_playback_info_response_payload(body_bytes: bytes) -> bytes:
                 ms["SupportsDirectPlay"] = False
                 ms["SupportsDirectStream"] = False
                 ms["SupportsTranscoding"] = True
+                ms["SupportsSubtitlesInHls"] = False
                 ms["PlayMethod"] = "Transcode"
                 
                 if "DirectStreamUrl" in ms:
