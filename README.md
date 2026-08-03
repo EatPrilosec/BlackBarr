@@ -71,7 +71,6 @@ services:
       - JELLYFIN_PORT=6796
       - EMBY_PORT=6797
       - SCAN_DIRECTORIES=/media/movies, /media/shows
-      - BLACKBARR_DB_PATH=/config/BlackBarr.db
       - TZ=America/New_York
     volumes:
       - /DockerData/blackbarr/config:/config

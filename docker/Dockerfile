@@ -28,6 +28,8 @@ RUN chmod +x /usr/local/bin/ffmpeg-wrapper.sh /usr/local/bin/entrypoint.sh
 # Create persistent storage directories
 VOLUME ["/config", "/media"]
 
+ENV BLACKBARR_DB_PATH=/config/BlackBarr.db
+
 EXPOSE 6795 6796 6797
 
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:6795/health || exit 1
