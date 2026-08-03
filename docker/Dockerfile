@@ -2,7 +2,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS plugin-builder
 WORKDIR /src
 COPY src/plugin/jellyfin /src
-RUN dotnet publish -c Release -o /out
+RUN dotnet publish -c Release -o /out && \
+    rm -rf /out/MediaBrowser* /out/Microsoft* /out/System* /out/ICU4N* /out/J2N* /out/Polly* /out/NEbml* /out/BitFaster* /out/Diacritics* /out/Emby.Naming* /out/Jellyfin.Data* /out/Jellyfin.Database* /out/Jellyfin.Extensions* /out/Jellyfin.MediaEncoding* && \
+    cp /src/meta.json /out/ 2>/dev/null || true
 
 # Stage 2: Final BlackBarr App Image
 FROM python:3.11-slim

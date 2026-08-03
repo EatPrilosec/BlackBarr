@@ -38,6 +38,8 @@ auto_inject_config() {
         if [ "$server_name" = "Jellyfin" ] && [ -d "/app/plugins/jellyfin" ]; then
             local plugin_target_dir="$target_dir/plugins/BlackBarrHelper"
             mkdir -p "$plugin_target_dir"
+            # Clean up duplicate framework DLLs from plugin folder
+            find "$plugin_target_dir" -maxdepth 1 -type f ! -name "Jellyfin.Plugin.BlackBarrHelper*" ! -name "meta.json" -delete 2>/dev/null || true
             cp -rf /app/plugins/jellyfin/* "$plugin_target_dir/"
             if [ -n "$dir_uid_gid" ]; then
                 chown -R "$dir_uid_gid" "$plugin_target_dir" 2>/dev/null || true
