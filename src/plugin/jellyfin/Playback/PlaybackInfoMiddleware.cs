@@ -26,8 +26,9 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)
         {
             var path = context.Request.Path.Value ?? string.Empty;
+            var query = context.Request.QueryString.Value ?? string.Empty;
 
-            if (path.Contains("TestConnection", StringComparison.OrdinalIgnoreCase) || path.Contains("blackbarr", StringComparison.OrdinalIgnoreCase))
+            if (query.Contains("TestConnection", StringComparison.OrdinalIgnoreCase) || path.Contains("TestConnection", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogInformation("[BlackBarr Helper] Intercepted test connection request at path: {Path}", path);
                 await HandleTestConnectionAsync(context);
@@ -127,25 +128,28 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
 
-            string targetUrl = string.Empty;
+            string targetUrl = context.Request.Query["Url"].ToString();
 
-            try
+            if (string.IsNullOrWhiteSpace(targetUrl))
             {
-                context.Request.EnableBuffering();
-                context.Request.Body.Position = 0;
-                using var reader = new StreamReader(context.Request.Body, Encoding.UTF8, leaveOpen: true);
-                string reqBody = await reader.ReadToEndAsync();
-                context.Request.Body.Position = 0;
-
-                if (!string.IsNullOrWhiteSpace(reqBody))
+                try
                 {
-                    var reqDoc = JsonNode.Parse(reqBody);
-                    targetUrl = reqDoc?["Url"]?.ToString() ?? string.Empty;
+                    context.Request.EnableBuffering();
+                    context.Request.Body.Position = 0;
+                    using var reader = new StreamReader(context.Request.Body, Encoding.UTF8, leaveOpen: true);
+                    string reqBody = await reader.ReadToEndAsync();
+                    context.Request.Body.Position = 0;
+
+                    if (!string.IsNullOrWhiteSpace(reqBody))
+                    {
+                        var reqDoc = JsonNode.Parse(reqBody);
+                        targetUrl = reqDoc?["Url"]?.ToString() ?? string.Empty;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[BlackBarr Helper] Failed to parse TestConnection request body");
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[BlackBarr Helper] Failed to parse TestConnection request body");
+                }
             }
 
             if (string.IsNullOrWhiteSpace(targetUrl))

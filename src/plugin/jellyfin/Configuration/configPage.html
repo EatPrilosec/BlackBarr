@@ -69,10 +69,8 @@
                     }
                     Dashboard.showLoadingMsg();
                     ApiClient.ajax({
-                        type: 'POST',
-                        url: ApiClient.getUrl('Items/00000000000000000000000000000000/PlaybackInfo?TestConnection=1'),
-                        data: JSON.stringify({ Url: baseUrl }),
-                        contentType: 'application/json'
+                        type: 'GET',
+                        url: ApiClient.getUrl('Branding/Configuration?TestConnection=1&Url=' + encodeURIComponent(baseUrl))
                     }).then(function (result) {
                         Dashboard.hideLoadingMsg();
                         if (typeof result === 'string') {
@@ -85,7 +83,8 @@
                         }
                     }).catch(function (err) {
                         Dashboard.hideLoadingMsg();
-                        Dashboard.alert({ title: 'Error', message: 'Failed to communicate with Jellyfin backend: ' + (err.message || err) });
+                        var msg = (err && err.responseText) ? err.responseText : (err ? (err.message || JSON.stringify(err)) : 'Unknown error');
+                        Dashboard.alert({ title: 'Error', message: 'Failed to communicate with Jellyfin backend: ' + msg });
                     });
                 });
 
