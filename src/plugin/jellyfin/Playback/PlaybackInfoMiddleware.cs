@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -52,6 +53,10 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
                 return;
             }
 
+            // Remove Accept-Encoding from request so Jellyfin inner pipeline produces raw JSON when possible
+            var clientEncoding = context.Request.Headers["Accept-Encoding"].ToString();
+            context.Request.Headers.Remove("Accept-Encoding");
+
             var originalBodyStream = context.Response.Body;
             using var responseBody = new MemoryStream();
             context.Response.Body = responseBody;
@@ -67,7 +72,40 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
                 return;
             }
 
-            string jsonString = await new StreamReader(responseBody).ReadToEndAsync();
+            string contentEncoding = context.Response.Headers.ContentEncoding.ToString();
+            string jsonString = string.Empty;
+
+            try
+            {
+                Stream decompressedStream = responseBody;
+                if (contentEncoding.Contains("gzip", StringComparison.OrdinalIgnoreCase))
+                {
+                    decompressedStream = new GZipStream(responseBody, CompressionMode.Decompress, leaveOpen: true);
+                }
+                else if (contentEncoding.Contains("br", StringComparison.OrdinalIgnoreCase))
+                {
+                    decompressedStream = new BrotliStream(responseBody, CompressionMode.Decompress, leaveOpen: true);
+                }
+
+                using (var reader = new StreamReader(decompressedStream, Encoding.UTF8, leaveOpen: true))
+                {
+                    jsonString = await reader.ReadToEndAsync();
+                }
+
+                // Strip UTF-8 BOM if present
+                if (jsonString.StartsWith("\uFEFF"))
+                {
+                    jsonString = jsonString.Substring(1);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[BlackBarr Helper] Failed to read response stream on PlaybackInfo");
+                responseBody.Seek(0, SeekOrigin.Begin);
+                await responseBody.CopyToAsync(originalBodyStream);
+                return;
+            }
+
             try
             {
                 var doc = JsonNode.Parse(jsonString);
@@ -119,9 +157,32 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
                 _logger.LogWarning(ex, "[BlackBarr Helper] Failed to parse or mutate PlaybackInfo response JSON");
             }
 
-            var modifiedBytes = Encoding.UTF8.GetBytes(jsonString);
-            context.Response.ContentLength = modifiedBytes.Length;
-            await originalBodyStream.WriteAsync(modifiedBytes, 0, modifiedBytes.Length);
+            byte[] finalBytes = Encoding.UTF8.GetBytes(jsonString);
+
+            // Re-compress response if client requested gzip/brotli
+            if (clientEncoding.Contains("gzip", StringComparison.OrdinalIgnoreCase))
+            {
+                using var outMs = new MemoryStream();
+                using (var gzipMs = new GZipStream(outMs, CompressionMode.Compress, leaveOpen: true))
+                {
+                    await gzipMs.WriteAsync(finalBytes, 0, finalBytes.Length);
+                }
+                finalBytes = outMs.ToArray();
+                context.Response.Headers.ContentEncoding = "gzip";
+            }
+            else if (clientEncoding.Contains("br", StringComparison.OrdinalIgnoreCase))
+            {
+                using var outMs = new MemoryStream();
+                using (var brotliMs = new BrotliStream(outMs, CompressionLevel.Fastest, leaveOpen: true))
+                {
+                    await brotliMs.WriteAsync(finalBytes, 0, finalBytes.Length);
+                }
+                finalBytes = outMs.ToArray();
+                context.Response.Headers.ContentEncoding = "br";
+            }
+
+            context.Response.ContentLength = finalBytes.Length;
+            await originalBodyStream.WriteAsync(finalBytes, 0, finalBytes.Length);
         }
 
         private async Task HandleTestConnectionAsync(HttpContext context)
