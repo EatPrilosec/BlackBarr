@@ -92,14 +92,22 @@ for arg in "$@"; do
     if [[ "$arg" == *"vaapi"* ]]; then HAS_VAAPI=1; fi
 done
 
-# Adapt crop filter for QSV or CUDA hardware pipelines if needed
-if (( HAS_QSV )); then
-    # Parse w:h:x:y
+# Adapt crop filter for QSV, CUDA, or VAAPI hardware pipelines if needed
+if (( HAS_VAAPI )); then
+    RAW_CROP="${CROP_VAL#crop=}"
+    CROP_FILTER="hwdownload,format=nv12,crop=${RAW_CROP},setsar=1,hwupload"
+elif (( HAS_QSV )); then
     RAW_CROP="${CROP_VAL#crop=}"
     IFS=':' read -r CW CH CX CY <<< "$RAW_CROP"
     if [[ -n "$CW" ]] && [[ -n "$CH" ]]; then
         QSV_CROP="vpp_qsv=crop_w=$CW:crop_h=$CH:crop_x=${CX:-0}:crop_y=${CY:-0},setsar=1"
         CROP_FILTER="$QSV_CROP"
+    fi
+else
+    if [[ "$CROP_VAL" =~ ^crop= ]]; then
+        CROP_FILTER="${CROP_VAL},setsar=1"
+    else
+        CROP_FILTER="crop=${CROP_VAL},setsar=1"
     fi
 fi
 
