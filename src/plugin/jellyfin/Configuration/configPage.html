@@ -21,7 +21,7 @@
                                 <span>Test Connection</span>
                             </button>
                         </div>
-                        <div class="fieldDescription">Base URL of your BlackBarr container (e.g. http://blackbarr:6795).</div>
+                        <div class="fieldDescription">Base URL of your BlackBarr container as reached by Jellyfin (e.g. http://127.0.0.1:6795).</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withFieldDescription">
@@ -54,7 +54,7 @@
                 document.querySelector('#BlackBarrHelperConfigPage').addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-                        document.querySelector('#txtBlackBarrUrl').value = config.BlackBarrUrl || 'http://blackbarr:6795';
+                        document.querySelector('#txtBlackBarrUrl').value = config.BlackBarrUrl || 'http://127.0.0.1:6795';
                         document.querySelector('#chkForceTranscodeCropped').checked = config.ForceTranscodeCropped !== false;
                         document.querySelector('#chkForceTranscodeAll').checked = config.ForceTranscodeAll === true;
                         Dashboard.hideLoadingMsg();
@@ -62,25 +62,31 @@
                 });
 
                 document.querySelector('#btnTestConnection').addEventListener('click', function () {
-                    const baseUrl = document.querySelector('#txtBlackBarrUrl').value.trim().replace(/\/+$/, '');
+                    const baseUrl = document.querySelector('#txtBlackBarrUrl').value.trim();
                     if (!baseUrl) {
                         Dashboard.alert({ title: 'Error', message: 'Please enter a valid BlackBarr API URL.' });
                         return;
                     }
                     Dashboard.showLoadingMsg();
-                    fetch(baseUrl + '/health')
-                        .then(function (res) {
-                            Dashboard.hideLoadingMsg();
-                            if (res.ok) {
-                                Dashboard.alert({ title: 'Success', message: 'Successfully connected to BlackBarr API server at ' + baseUrl });
-                            } else {
-                                Dashboard.alert({ title: 'Connection Failed', message: 'BlackBarr API returned HTTP ' + res.status });
-                            }
-                        })
-                        .catch(function (err) {
-                            Dashboard.hideLoadingMsg();
-                            Dashboard.alert({ title: 'Connection Error', message: 'Unable to reach BlackBarr API at ' + baseUrl + '. Details: ' + err.message });
-                        });
+                    ApiClient.ajax({
+                        type: 'POST',
+                        url: ApiClient.getUrl('BlackBarrHelper/TestConnection'),
+                        data: JSON.stringify({ Url: baseUrl }),
+                        contentType: 'application/json'
+                    }).then(function (result) {
+                        Dashboard.hideLoadingMsg();
+                        if (typeof result === 'string') {
+                            try { result = JSON.parse(result); } catch (e) {}
+                        }
+                        if (result.success || result.Success) {
+                            Dashboard.alert({ title: 'Success', message: result.message || result.Message });
+                        } else {
+                            Dashboard.alert({ title: 'Connection Failed', message: result.message || result.Message });
+                        }
+                    }).catch(function (err) {
+                        Dashboard.hideLoadingMsg();
+                        Dashboard.alert({ title: 'Error', message: 'Failed to communicate with Jellyfin backend: ' + (err.message || err) });
+                    });
                 });
 
                 document.querySelector('#BlackBarrHelperConfigForm').addEventListener('submit', function (e) {
