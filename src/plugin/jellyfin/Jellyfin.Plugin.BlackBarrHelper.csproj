@@ -4,7 +4,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.BlackBarrHelper</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.BlackBarrHelper</AssemblyName>
-    <Version>1.0.0</Version>
+    <Version>1.0.1.0</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
