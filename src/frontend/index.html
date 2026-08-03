@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,9 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -44,19 +47,23 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-dark-base text-slate-100 min-h-screen flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+
+<body
+    class="bg-dark-base text-slate-100 min-h-screen flex flex-col font-sans selection:bg-brand-500 selection:text-white">
 
     <!-- Top Navigation Bar -->
     <header class="sticky top-0 z-30 bg-dark-base/80 backdrop-blur-md border-b border-slate-800/80 px-6 md:px-8 py-4">
         <div class="w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
-            
+
             <!-- Logo & Title -->
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                     <i data-lucide="crop" class="w-5 h-5 text-white"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                    <h1
+                        class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
                         BlackBarr
                     </h1>
                     <p class="text-xs text-slate-400 font-medium">Emby & Jellyfin Transcode & Aspect Ratio Injector</p>
@@ -65,82 +72,100 @@
 
             <!-- Global Toggles & Action Controls -->
             <div class="flex flex-wrap items-center gap-4">
-                
+
                 <!-- Scanner Running Status Badge -->
-                <div id="scannerProgressBadge" class="hidden items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-medium">
+                <div id="scannerProgressBadge"
+                    class="hidden items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-medium">
                     <span class="relative flex h-2 w-2">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                     </span>
                     <span id="scannerStatusText">Scanning Library...</span>
-                    <button id="btnStopScan" onclick="stopCurrentScan(event)" class="ml-1.5 px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 text-[10px] font-bold border border-rose-500/30 transition-all flex items-center gap-1">
+                    <button id="btnStopScan" onclick="stopCurrentScan(event)"
+                        class="ml-1.5 px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 text-[10px] font-bold border border-rose-500/30 transition-all flex items-center gap-1">
                         <i data-lucide="square" class="w-2.5 h-2.5 fill-current"></i> Stop
                     </button>
                 </div>
 
                 <!-- Transcode Mode Toggles -->
                 <div class="flex items-center gap-4 bg-dark-card border border-slate-800 px-4 py-2 rounded-xl">
-                    <div class="flex items-center gap-2" title="Automatically force transcoding only for items with detected black bar crops">
+                    <div class="flex items-center gap-2"
+                        title="Automatically force transcoding only for items with detected black bar crops">
                         <span class="text-xs font-semibold text-slate-300 flex items-center gap-1">
                             <i data-lucide="crop" class="w-3.5 h-3.5 text-indigo-400"></i>
                             Transcode Cropped
                         </span>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="forceCroppedToggle" class="sr-only peer" checked>
-                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                            <div
+                                class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600">
+                            </div>
                         </label>
                     </div>
 
                     <div class="h-4 w-px bg-slate-800"></div>
 
-                    <div class="flex items-center gap-2" title="Globally force transcoding on ALL streams across the server">
+                    <div class="flex items-center gap-2"
+                        title="Globally force transcoding on ALL streams across the server">
                         <span class="text-xs font-semibold text-slate-300 flex items-center gap-1">
                             <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-rose-400"></i>
-                            Force All
+                            Force Transcode All
                         </span>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="forceAllToggle" class="sr-only peer">
-                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600"></div>
+                            <div
+                                class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600">
+                            </div>
                         </label>
                     </div>
                 </div>
 
                 <!-- Actions -->
                 <div class="relative inline-block text-left">
-                    <div class="flex items-center rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 shadow-lg shadow-indigo-600/25">
-                        <button id="btnTriggerScan" class="flex items-center gap-2 px-4 py-2 text-white font-medium text-xs hover:from-indigo-500 hover:to-indigo-600 transition-all active:scale-95">
+                    <div
+                        class="flex items-center rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 shadow-lg shadow-indigo-600/25">
+                        <button id="btnTriggerScan"
+                            class="flex items-center gap-2 px-4 py-2 text-white font-medium text-xs hover:from-indigo-500 hover:to-indigo-600 transition-all active:scale-95">
                             <i data-lucide="scan" class="w-4 h-4"></i>
                             <span id="scanBtnLabel">Run Scan</span>
                         </button>
-                        <button id="btnScanDropdownToggle" class="px-2 py-2 text-indigo-200 hover:text-white border-l border-indigo-500/40 transition-all">
+                        <button id="btnScanDropdownToggle"
+                            class="px-2 py-2 text-indigo-200 hover:text-white border-l border-indigo-500/40 transition-all">
                             <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
                         </button>
                     </div>
 
                     <!-- Dropdown Menu -->
-                    <div id="scanDropdownMenu" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-dark-card border border-slate-800 shadow-2xl py-1 z-50 divide-y divide-slate-800/80">
+                    <div id="scanDropdownMenu"
+                        class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-dark-card border border-slate-800 shadow-2xl py-1 z-50 divide-y divide-slate-800/80">
                         <div class="py-1">
-                            <button onclick="triggerScanMode('new')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                            <button onclick="triggerScanMode('new')"
+                                class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
                                 <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-indigo-400"></i>
                                 <span>Scan New Files</span>
                             </button>
-                            <button onclick="triggerScanMode('full')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                            <button onclick="triggerScanMode('full')"
+                                class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
                                 <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-amber-400"></i>
                                 <span>Force Full Rescan</span>
                             </button>
                         </div>
                         <div class="py-1">
-                            <button onclick="triggerScanMode('filtered')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                            <button onclick="triggerScanMode('filtered')"
+                                class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
                                 <i data-lucide="filter" class="w-3.5 h-3.5 text-emerald-400"></i>
                                 <span>Rescan Current Filter</span>
                             </button>
                         </div>
                         <div class="py-1">
-                            <button onclick="triggerScanMode('deep')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                            <button onclick="triggerScanMode('deep')"
+                                class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
                                 <i data-lucide="zap" class="w-3.5 h-3.5 text-purple-400"></i>
                                 <span>Deep Scan Library</span>
                             </button>
-                            <button onclick="triggerScanMode('deep_filtered')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
+                            <button onclick="triggerScanMode('deep_filtered')"
+                                class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2">
                                 <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-300"></i>
                                 <span>Deep Scan Filtered</span>
                             </button>
@@ -148,12 +173,16 @@
                     </div>
                 </div>
 
-                <button id="btnOpenSettings" class="p-2 rounded-xl bg-dark-card border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-all" title="Settings">
+                <button id="btnOpenSettings"
+                    class="p-2 rounded-xl bg-dark-card border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-all"
+                    title="Settings">
                     <i data-lucide="settings" class="w-4 h-4"></i>
                 </button>
 
                 <!-- Donate Button -->
-                <a href="https://paypal.me/DVDIsDead" target="_blank" rel="noopener noreferrer" title="Donate / Support BlackBarr" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold text-xs transition-all shadow-sm active:scale-95">
+                <a href="https://paypal.me/DVDIsDead" target="_blank" rel="noopener noreferrer"
+                    title="Donate / Support BlackBarr"
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold text-xs transition-all shadow-sm active:scale-95">
                     <i data-lucide="heart" class="w-3.5 h-3.5 text-rose-400 fill-rose-400"></i>
                     <span>Donate</span>
                 </a>
@@ -163,12 +192,13 @@
 
     <!-- Main Container -->
     <main class="flex-1 w-full px-6 md:px-8 py-8 space-y-8">
-        
+
         <!-- Summary Stats Grid -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            
+
             <!-- Card 1: Total Files -->
-            <div class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
+            <div
+                class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Scanned</span>
                     <div class="p-2 rounded-xl bg-slate-800/60 text-slate-300">
@@ -182,7 +212,8 @@
             </div>
 
             <!-- Card 2: Cropped (Black Bars Detected) -->
-            <div class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+            <div
+                class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cropped</span>
                     <div class="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -196,7 +227,8 @@
             </div>
 
             <!-- Card 3: No Black Bars -->
-            <div class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
+            <div
+                class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Full Frame</span>
                     <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
@@ -210,7 +242,8 @@
             </div>
 
             <!-- Card 4: Pending -->
-            <div class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-amber-500/40 transition-all">
+            <div
+                class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-amber-500/40 transition-all">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pending</span>
                     <div class="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -224,7 +257,8 @@
             </div>
 
             <!-- Card 5: Error -->
-            <div class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-rose-500/40 transition-all">
+            <div
+                class="bg-dark-card/90 backdrop-blur border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-rose-500/40 transition-all">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Errors</span>
                     <div class="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
@@ -241,33 +275,39 @@
 
         <!-- Media Table & Filter Bar Section -->
         <section class="bg-dark-card border border-slate-800/80 rounded-2xl shadow-xl overflow-hidden flex flex-col">
-            
+
             <!-- Controls Header -->
-            <div class="p-5 border-b border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900/40">
-                
+            <div
+                class="p-5 border-b border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900/40">
+
                 <!-- Search Input -->
                 <div class="relative w-full md:w-96">
-                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="searchInput" placeholder="Search by media path..." class="w-full bg-dark-base border border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all">
+                    <i data-lucide="search"
+                        class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="Search by media path..."
+                        class="w-full bg-dark-base border border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all">
                 </div>
 
                 <!-- Filters & Add Entry -->
                 <div class="flex items-center gap-3 w-full md:w-auto justify-end">
-                    
+
                     <!-- Scan Path Filter Dropdown -->
-                    <select id="directoryFilter" class="bg-dark-base border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:border-indigo-500 max-w-[180px] truncate">
+                    <select id="directoryFilter"
+                        class="bg-dark-base border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:border-indigo-500 max-w-[180px] truncate">
                         <option value="">All Scan Paths</option>
                     </select>
 
                     <!-- Format Filter Dropdown -->
-                    <select id="formatFilter" class="bg-dark-base border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:border-indigo-500">
+                    <select id="formatFilter"
+                        class="bg-dark-base border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:border-indigo-500">
                         <option value="">All Formats</option>
                         <option value="hdr">HDR Only</option>
                         <option value="sdr">SDR Only</option>
                     </select>
 
                     <!-- Status Filter Dropdown -->
-                    <select id="statusFilter" class="bg-dark-base border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:border-indigo-500">
+                    <select id="statusFilter"
+                        class="bg-dark-base border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:border-indigo-500">
                         <option value="">All Statuses</option>
                         <option value="CROPPED">Cropped (Black Bars)</option>
                         <option value="NO_BLACK_BARS">Full Frame (No Black Bars)</option>
@@ -278,34 +318,40 @@
                     </select>
 
                     <!-- Add Manual Entry Button -->
-                    <button id="btnAddManual" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 font-medium transition-all">
+                    <button id="btnAddManual"
+                        class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 font-medium transition-all">
                         <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                         <span>Add Entry</span>
                     </button>
 
                     <!-- Refresh Table -->
-                    <button id="btnRefresh" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all">
+                    <button id="btnRefresh"
+                        class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all">
                         <i data-lucide="rotate-cw" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Batch Actions Floating Bar -->
-            <div id="batchActionBar" class="hidden px-6 py-3 bg-indigo-950/70 border-b border-indigo-500/30 flex items-center justify-between text-xs font-medium text-indigo-200">
+            <div id="batchActionBar"
+                class="hidden px-6 py-3 bg-indigo-950/70 border-b border-indigo-500/30 flex items-center justify-between text-xs font-medium text-indigo-200">
                 <div class="flex items-center gap-2">
                     <i data-lucide="check-square" class="w-4 h-4 text-indigo-400"></i>
                     <span id="batchSelectedCount">0 items selected</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button id="btnBatchRescan" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md transition-all">
+                    <button id="btnBatchRescan"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md transition-all">
                         <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                         <span>Rescan Selected</span>
                     </button>
-                    <button id="btnBatchDeepScan" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-md transition-all">
+                    <button id="btnBatchDeepScan"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-md transition-all">
                         <i data-lucide="zap" class="w-3.5 h-3.5"></i>
                         <span>Deep Scan Selected</span>
                     </button>
-                    <button id="btnClearSelection" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all">
+                    <button id="btnClearSelection"
+                        class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all">
                         Clear Selection
                     </button>
                 </div>
@@ -314,36 +360,43 @@
             <!-- Table Area -->
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm text-slate-300">
-                    <thead class="bg-slate-900/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 select-none">
+                    <thead
+                        class="bg-slate-900/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 select-none">
                         <tr>
                             <th class="py-3.5 px-4 w-10 text-center">
-                                <input type="checkbox" id="selectAllCheckbox" class="rounded border-slate-700 bg-dark-base text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                                <input type="checkbox" id="selectAllCheckbox"
+                                    class="rounded border-slate-700 bg-dark-base text-indigo-600 focus:ring-indigo-500 cursor-pointer">
                             </th>
-                            <th class="py-3.5 px-6 cursor-pointer hover:text-white transition-colors" data-sort="file_path">
+                            <th class="py-3.5 px-6 cursor-pointer hover:text-white transition-colors"
+                                data-sort="file_path">
                                 <div class="flex items-center gap-1.5">
                                     <span>File Path</span>
                                     <span class="sort-icon text-[10px] text-slate-500" id="sort_file_path">↕</span>
                                 </div>
                             </th>
-                            <th class="py-3.5 px-4 cursor-pointer hover:text-white transition-colors" data-sort="is_hdr">
+                            <th class="py-3.5 px-4 cursor-pointer hover:text-white transition-colors"
+                                data-sort="is_hdr">
                                 <div class="flex items-center gap-1.5">
                                     <span>Format</span>
                                     <span class="sort-icon text-[10px] text-slate-500" id="sort_is_hdr">↕</span>
                                 </div>
                             </th>
-                            <th class="py-3.5 px-4 cursor-pointer hover:text-white transition-colors" data-sort="crop_val">
+                            <th class="py-3.5 px-4 cursor-pointer hover:text-white transition-colors"
+                                data-sort="crop_val">
                                 <div class="flex items-center gap-1.5">
                                     <span>Detected Crop Value</span>
                                     <span class="sort-icon text-[10px] text-slate-500" id="sort_crop_val">↕</span>
                                 </div>
                             </th>
-                            <th class="py-3.5 px-4 cursor-pointer hover:text-white transition-colors" data-sort="status">
+                            <th class="py-3.5 px-4 cursor-pointer hover:text-white transition-colors"
+                                data-sort="status">
                                 <div class="flex items-center gap-1.5">
                                     <span>Status</span>
                                     <span class="sort-icon text-[10px] text-slate-500" id="sort_status">↕</span>
                                 </div>
                             </th>
-                            <th class="py-3.5 px-4 cursor-pointer hover:text-white transition-colors" data-sort="updated_at">
+                            <th class="py-3.5 px-4 cursor-pointer hover:text-white transition-colors"
+                                data-sort="updated_at">
                                 <div class="flex items-center gap-1.5">
                                     <span>Last Updated</span>
                                     <span class="sort-icon text-[10px] text-indigo-400" id="sort_updated_at">↓</span>
@@ -367,11 +420,14 @@
             </div>
 
             <!-- Table Footer / Pagination -->
-            <div class="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 bg-slate-900/40">
+            <div
+                class="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 bg-slate-900/40">
                 <div id="paginationInfo">Showing 0 of 0 items</div>
                 <div class="flex items-center gap-2">
-                    <button id="btnPrevPage" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
-                    <button id="btnNextPage" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+                    <button id="btnPrevPage"
+                        class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
+                    <button id="btnNextPage"
+                        class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
                 </div>
             </div>
 
@@ -380,29 +436,36 @@
     </main>
 
     <!-- Modal: Edit / Add Media Entry -->
-    <div id="mediaModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
-        <div class="bg-dark-card border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+    <div id="mediaModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+        <div
+            class="bg-dark-card border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
             <div class="flex items-center justify-between border-b border-slate-800 pb-4">
                 <h3 id="modalTitle" class="text-lg font-bold text-white">Edit Crop Entry</h3>
-                <button id="btnCloseModal" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button id="btnCloseModal" class="text-slate-400 hover:text-white"><i data-lucide="x"
+                        class="w-5 h-5"></i></button>
             </div>
-            
+
             <form id="mediaForm" class="space-y-4">
                 <input type="hidden" id="modalMediaId">
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">File Path</label>
-                    <input type="text" id="modalFilePath" required class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                    <input type="text" id="modalFilePath" required
+                        class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Crop Value (e.g. 1920:800:0:140)</label>
-                    <input type="text" id="modalCropVal" placeholder="Leave empty if No Black Bars" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Crop Value (e.g.
+                        1920:800:0:140)</label>
+                    <input type="text" id="modalCropVal" placeholder="Leave empty if No Black Bars"
+                        class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Status</label>
-                        <select id="modalStatus" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none">
+                        <select id="modalStatus"
+                            class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none">
                             <option value="PROCESSED">PROCESSED</option>
                             <option value="PENDING">PENDING</option>
                             <option value="ERROR">ERROR</option>
@@ -413,34 +476,44 @@
                     <div class="flex items-center gap-3 pt-5">
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="modalIsHdr" class="sr-only peer">
-                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                            <div
+                                class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600">
+                            </div>
                         </label>
                         <span class="text-xs font-medium text-slate-300">HDR Content</span>
                     </div>
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-                    <button type="button" id="btnCancelModal" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium">Cancel</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">Save Entry</button>
+                    <button type="button" id="btnCancelModal"
+                        class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium">Cancel</button>
+                    <button type="submit"
+                        class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">Save
+                        Entry</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Modal: Global Settings -->
-    <div id="settingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+    <div id="settingsModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
         <div class="bg-dark-card border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-5">
             <div class="flex items-center justify-between border-b border-slate-800 pb-4">
                 <h3 class="text-lg font-bold text-white">Middleware Configuration</h3>
-                <button id="btnCloseSettingsModal" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button id="btnCloseSettingsModal" class="text-slate-400 hover:text-white"><i data-lucide="x"
+                        class="w-5 h-5"></i></button>
             </div>
-            
+
             <form id="settingsForm" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target Jellyfin Server URL</label>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target Jellyfin Server
+                        URL</label>
                     <div class="flex items-center gap-2">
-                        <input type="text" id="cfgTargetUrl" placeholder="http://jellyfin:8096" required class="flex-1 bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
-                        <button type="button" id="btnTestJellyfin" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-all flex items-center gap-1.5 whitespace-nowrap">
+                        <input type="text" id="cfgTargetUrl" placeholder="http://jellyfin:8096" required
+                            class="flex-1 bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                        <button type="button" id="btnTestJellyfin"
+                            class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-all flex items-center gap-1.5 whitespace-nowrap">
                             <i data-lucide="plug-zap" class="w-3.5 h-3.5"></i> Test
                         </button>
                     </div>
@@ -448,10 +521,13 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target Emby Server URL (Optional for Dual Setup)</label>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target Emby Server URL
+                        (Optional for Dual Setup)</label>
                     <div class="flex items-center gap-2">
-                        <input type="text" id="cfgTargetEmbyUrl" placeholder="http://emby:8096" class="flex-1 bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
-                        <button type="button" id="btnTestEmby" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-all flex items-center gap-1.5 whitespace-nowrap">
+                        <input type="text" id="cfgTargetEmbyUrl" placeholder="http://emby:8096"
+                            class="flex-1 bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                        <button type="button" id="btnTestEmby"
+                            class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-all flex items-center gap-1.5 whitespace-nowrap">
                             <i data-lucide="plug-zap" class="w-3.5 h-3.5"></i> Test
                         </button>
                     </div>
@@ -459,51 +535,71 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Scan Directories (Comma-Separated)</label>
-                    <input type="text" id="cfgScanDirectories" placeholder="/media/movies, /media/tv, /media/anime" required class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Scan Directories
+                        (Comma-Separated)</label>
+                    <input type="text" id="cfgScanDirectories" placeholder="/media/movies, /media/tv, /media/anime"
+                        required
+                        class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                 </div>
 
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">SDR Crop Threshold</label>
-                        <input type="text" id="cfgSdrLimit" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">SDR Crop
+                            Threshold</label>
+                        <input type="text" id="cfgSdrLimit"
+                            class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">HDR Crop Threshold</label>
-                        <input type="text" id="cfgHdrLimit" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">HDR Crop
+                            Threshold</label>
+                        <input type="text" id="cfgHdrLimit"
+                            class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Sample Points</label>
-                        <input type="number" id="cfgSampleCount" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                        <input type="number" id="cfgSampleCount"
+                            class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1" title="Parallel files scanned at the same time">Parallel Threads</label>
-                        <input type="number" id="cfgScanConcurrency" min="1" max="16" placeholder="2" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1"
+                            title="Parallel files scanned at the same time">Parallel Threads</label>
+                        <input type="number" id="cfgScanConcurrency" min="1" max="16" placeholder="2"
+                            class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Interval (Mins)</label>
-                        <input type="number" id="cfgScanInterval" class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
+                        <input type="number" id="cfgScanInterval"
+                            class="w-full bg-dark-base border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-indigo-500 focus:outline-none">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 bg-purple-950/20 p-3 rounded-xl border border-purple-500/20">
                     <div>
-                        <label class="block text-xs font-semibold text-purple-300 uppercase mb-1 flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3 text-purple-400"></i> Deep Scan Points</label>
-                        <input type="number" id="cfgDeepSampleCount" placeholder="15" class="w-full bg-dark-base border border-purple-800/80 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-purple-500 focus:outline-none">
+                        <label
+                            class="block text-xs font-semibold text-purple-300 uppercase mb-1 flex items-center gap-1"><i
+                                data-lucide="zap" class="w-3 h-3 text-purple-400"></i> Deep Scan Points</label>
+                        <input type="number" id="cfgDeepSampleCount" placeholder="15"
+                            class="w-full bg-dark-base border border-purple-800/80 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-purple-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-purple-300 uppercase mb-1 flex items-center gap-1"><i data-lucide="layers" class="w-3 h-3 text-purple-400"></i> Deep Scan Frames/Point</label>
-                        <input type="number" id="cfgDeepFrameCount" placeholder="120" class="w-full bg-dark-base border border-purple-800/80 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-purple-500 focus:outline-none">
+                        <label
+                            class="block text-xs font-semibold text-purple-300 uppercase mb-1 flex items-center gap-1"><i
+                                data-lucide="layers" class="w-3 h-3 text-purple-400"></i> Deep Scan Frames/Point</label>
+                        <input type="number" id="cfgDeepFrameCount" placeholder="120"
+                            class="w-full bg-dark-base border border-purple-800/80 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:border-purple-500 focus:outline-none">
                     </div>
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-                    <button type="button" id="btnCancelSettings" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium">Cancel</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">Save Settings</button>
+                    <button type="button" id="btnCancelSettings"
+                        class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium">Cancel</button>
+                    <button type="submit"
+                        class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">Save
+                        Settings</button>
                 </div>
             </form>
         </div>
@@ -514,4 +610,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>
