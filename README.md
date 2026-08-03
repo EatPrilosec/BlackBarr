@@ -70,13 +70,13 @@ services:
       - PORT=6795
       - JELLYFIN_PORT=6796
       - EMBY_PORT=6797
-      - SCAN_DIRECTORIES=/media/movies, /media/shows
+      - SCAN_DIRECTORIES=/Storage/Media/Library/Movies, /Storage/Media/Library/Shows
       - TZ=America/New_York
     volumes:
       - /DockerData/blackbarr/config:/config
       - /DockerData/jellyfin/config:/target-jellyfin-config
       - /DockerData/emby/programdata:/target-emby-config
-      - /Storage/Media/Library:/media:ro
+      - /Storage/Media/Library:/Storage/Media/Library:ro
 
   # -------------------------------------------------------------
   # Jellyfin Media Server
@@ -91,7 +91,7 @@ services:
       - JELLYFIN_FFMPEG=/config/ffmpeg-wrapper.sh
     volumes:
       - /DockerData/jellyfin/config:/config
-      - /Storage/Media/Library:/media:ro
+      - /Storage/Media/Library:/Storage/Media/Library:ro
     depends_on:
       blackbarr:
         condition: service_healthy
@@ -111,7 +111,7 @@ services:
     volumes:
       - /DockerData/emby/programdata:/config
       - /DockerData/emby/programdata/00-emby-preinit.sh:/etc/cont-init.d/00-emby-preinit.sh
-      - /Storage/Media/Library:/media:ro
+      - /Storage/Media/Library:/Storage/Media/Library:ro
     depends_on:
       blackbarr:
         condition: service_healthy
