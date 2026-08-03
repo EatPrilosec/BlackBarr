@@ -15,7 +15,12 @@
 
                     <div class="inputContainer">
                         <label class="inputLabel" for="txtBlackBarrUrl">BlackBarr API Server URL:</label>
-                        <input id="txtBlackBarrUrl" name="txtBlackBarrUrl" type="text" is="emby-input" required />
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input id="txtBlackBarrUrl" name="txtBlackBarrUrl" type="text" is="emby-input" required style="flex: 1;" />
+                            <button type="button" id="btnTestConnection" is="emby-button" class="raised button-accent" style="margin: 0; white-space: nowrap;">
+                                <span>Test Connection</span>
+                            </button>
+                        </div>
                         <div class="fieldDescription">Base URL of your BlackBarr container (e.g. http://blackbarr:6795).</div>
                     </div>
 
@@ -35,7 +40,7 @@
                         <div class="fieldDescription">Globally force transcoding on all playback sessions across this Jellyfin server.</div>
                     </div>
 
-                    <div>
+                    <div style="margin-top: 1.5em;">
                         <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
                     </div>
                 </form>
@@ -54,6 +59,28 @@
                         document.querySelector('#chkForceTranscodeAll').checked = config.ForceTranscodeAll === true;
                         Dashboard.hideLoadingMsg();
                     });
+                });
+
+                document.querySelector('#btnTestConnection').addEventListener('click', function () {
+                    const baseUrl = document.querySelector('#txtBlackBarrUrl').value.trim().replace(/\/+$/, '');
+                    if (!baseUrl) {
+                        Dashboard.alert({ title: 'Error', message: 'Please enter a valid BlackBarr API URL.' });
+                        return;
+                    }
+                    Dashboard.showLoadingMsg();
+                    fetch(baseUrl + '/health')
+                        .then(function (res) {
+                            Dashboard.hideLoadingMsg();
+                            if (res.ok) {
+                                Dashboard.alert({ title: 'Success', message: 'Successfully connected to BlackBarr API server at ' + baseUrl });
+                            } else {
+                                Dashboard.alert({ title: 'Connection Failed', message: 'BlackBarr API returned HTTP ' + res.status });
+                            }
+                        })
+                        .catch(function (err) {
+                            Dashboard.hideLoadingMsg();
+                            Dashboard.alert({ title: 'Connection Error', message: 'Unable to reach BlackBarr API at ' + baseUrl + '. Details: ' + err.message });
+                        });
                 });
 
                 document.querySelector('#BlackBarrHelperConfigForm').addEventListener('submit', function (e) {
