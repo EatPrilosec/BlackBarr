@@ -44,6 +44,13 @@ async def check_item_requires_cropping(item_id: Optional[str] = None, file_path:
 
     return False
 
+def override_bitrate_in_query(query_str: str, target_bitrate: str = "140000000") -> str:
+    if not query_str:
+        return query_str
+    import re
+    pattern = r"((?:[M|m]axStreamingBitrate|[V|v]ideoBitrate|[M|m]axBitrate)=)\d+"
+    return re.sub(pattern, rf"\g<1>{target_bitrate}", query_str)
+
 def mutate_playback_info_request_payload(body_bytes: bytes) -> bytes:
     """
     Mutates incoming PlaybackInfo JSON payload to disable direct play/stream and preserve maximum bitrate for Emby/Jellyfin.
@@ -65,6 +72,12 @@ def mutate_playback_info_request_payload(body_bytes: bytes) -> bytes:
             dp = data["DeviceProfile"]
             dp["DirectPlayProfiles"] = []
             dp["MaxStreamingBitrate"] = 140000000
+            dp["MaxStaticBitrate"] = 140000000
+            if "TranscodingProfiles" in dp and isinstance(dp["TranscodingProfiles"], list):
+                for tp in dp["TranscodingProfiles"]:
+                    tp["MaxAudioChannels"] = "6"
+                    if "MaxStreamingBitrate" in tp:
+                        tp["MaxStreamingBitrate"] = "140000000"
         
         return json.dumps(data).encode("utf-8")
     except Exception as e:
@@ -73,7 +86,8 @@ def mutate_playback_info_request_payload(body_bytes: bytes) -> bytes:
 
 def mutate_playback_info_response_payload(body_bytes: bytes) -> bytes:
     """
-    Mutates outgoing PlaybackInfo JSON response to force Transcode play method.
+    Mutates outgoing PlaybackInfo JSON response to force Transcode play method
+    and override transcode bitrates to high quality (140Mbps).
     """
     try:
         data = json.loads(body_bytes.decode("utf-8"))
@@ -87,6 +101,9 @@ def mutate_playback_info_response_payload(body_bytes: bytes) -> bytes:
                 
                 if "DirectStreamUrl" in ms:
                     ms["DirectStreamUrl"] = None
+                    
+                if "TranscodingUrl" in ms and ms["TranscodingUrl"]:
+                    ms["TranscodingUrl"] = override_bitrate_in_query(ms["TranscodingUrl"], "140000000")
 
         return json.dumps(data).encode("utf-8")
     except Exception as e:
@@ -105,9 +122,12 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
         return Response(content=f"BlackBarr Proxy Error: {server_name} target URL not configured", status_code=502)
 
     target_server = configured_url.rstrip("/")
-    url = f"{target_server}{request.url.path}"
-    if request.url.query:
-        url += f"?{request.url.query}"
+    query_string = request.url.query
+    if query_string:
+        query_string = override_bitrate_in_query(query_string, "140000000")
+        url = f"{target_server}{request.url.path}?{query_string}"
+    else:
+        url = f"{target_server}{request.url.path}"
 
     headers = dict(request.headers)
     headers.pop("host", None)
