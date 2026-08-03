@@ -83,20 +83,41 @@ function setupEventListeners() {
         showToast('Refreshed data', 'info');
     });
 
-    // Forced Transcoding Toggle
-    document.getElementById('forcedTranscodeToggle').addEventListener('change', async (e) => {
-        const enabled = e.target.checked ? "true" : "false";
-        try {
-            await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ configs: { force_transcode_enabled: enabled } })
-            });
-            showToast(`Forced transcoding ${enabled === "true" ? 'enabled' : 'disabled'}`, 'success');
-        } catch (err) {
-            showToast('Failed to update forced transcoding toggle', 'error');
-        }
-    });
+    // Force Transcode Cropped Toggle
+    const forceCroppedBtn = document.getElementById('forceCroppedToggle');
+    if (forceCroppedBtn) {
+        forceCroppedBtn.addEventListener('change', async (e) => {
+            const enabled = e.target.checked ? "true" : "false";
+            try {
+                await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ configs: { force_transcode_cropped: enabled } })
+                });
+                showToast(`Transcode Cropped ${enabled === "true" ? 'enabled' : 'disabled'}`, 'success');
+            } catch (err) {
+                showToast('Failed to update toggle', 'error');
+            }
+        });
+    }
+
+    // Globally Force All Streams Toggle
+    const forceAllBtn = document.getElementById('forceAllToggle');
+    if (forceAllBtn) {
+        forceAllBtn.addEventListener('change', async (e) => {
+            const enabled = e.target.checked ? "true" : "false";
+            try {
+                await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ configs: { force_transcode_all: enabled } })
+                });
+                showToast(`Globally Force All Streams ${enabled === "true" ? 'enabled' : 'disabled'}`, 'warning');
+            } catch (err) {
+                showToast('Failed to update toggle', 'error');
+            }
+        });
+    }
 
     // Primary Run Scan Button (Default: Scan New Files)
     document.getElementById('btnTriggerScan').addEventListener('click', () => {
@@ -231,8 +252,11 @@ async function loadConfig() {
         if (!resp.ok) return;
         const config = await resp.json();
 
-        const forced = config.force_transcode_enabled === "true";
-        document.getElementById('forcedTranscodeToggle').checked = forced;
+        const forceCroppedEl = document.getElementById('forceCroppedToggle');
+        if (forceCroppedEl) forceCroppedEl.checked = (config.force_transcode_cropped !== "false");
+
+        const forceAllEl = document.getElementById('forceAllToggle');
+        if (forceAllEl) forceAllEl.checked = (config.force_transcode_all === "true");
 
         document.getElementById('cfgTargetUrl').value = config.target_server_url || "http://localhost:8096";
         document.getElementById('cfgTargetEmbyUrl').value = config.target_emby_url || "";

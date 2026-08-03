@@ -19,10 +19,6 @@ async def check_item_requires_cropping(item_id: Optional[str] = None, file_path:
     """
     Checks if a media file associated with item_id or file_path requires dynamic cropping.
     """
-    force_enabled = await get_config("force_transcode_enabled", "true")
-    if force_enabled.lower() != "true":
-        return False
-
     if file_path:
         item = await get_media_by_path(file_path)
         if item and item.get("status") == "PROCESSED" and item.get("crop_val"):
@@ -136,11 +132,15 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
         if not item_id:
             item_id = request.query_params.get("ItemId") or request.query_params.get("itemId")
             
-        force_global = await get_config("force_transcode_enabled", "true")
-        if force_global.lower() == "true":
+        force_all = await get_config("force_transcode_all", "false")
+        force_cropped = await get_config("force_transcode_cropped", "true")
+
+        if force_all.lower() == "true":
             should_force = True
-        else:
+        elif force_cropped.lower() == "true":
             should_force = await check_item_requires_cropping(item_id=item_id)
+        else:
+            should_force = False
 
     if is_playback_info and should_force:
         logger.info(f"[{server_name} Proxy] Intercepting PlaybackInfo for item {item_id or 'unknown'} to enforce transcode response")
@@ -171,7 +171,6 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
                     parsed = urlparse(loc)
                     out_headers[loc_key] = parsed.path + ("?" + parsed.query if parsed.query else "")
 
-        out_headers.pop("content-length", None)
         out_headers.pop("transfer-encoding", None)
         out_headers.pop("content-encoding", None)  # Stripping content-encoding fixes black/grey blank page!
         out_headers.pop("content-security-policy", None)
@@ -189,8 +188,11 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
                 media_type=resp.headers.get("content-type")
             )
 
+        if is_playback_info:
+            out_headers.pop("content-length", None)
+
         return StreamingResponse(
-            resp.aiter_bytes(),
+            resp.aiter_raw(chunk_size=65536),
             status_code=resp.status_code,
             headers=out_headers,
             background=None

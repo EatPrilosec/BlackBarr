@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, Response
 
 from database import init_db, get_config
 from api import router as api_router
-from proxy import reverse_proxy_handler, reverse_proxy_emby_handler
+from proxy import reverse_proxy_handler, reverse_proxy_emby_handler, proxy_websocket
 from scanner import scanner_instance
 
 logging.basicConfig(

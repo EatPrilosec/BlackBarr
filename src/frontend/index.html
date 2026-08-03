@@ -78,16 +78,31 @@
                     </button>
                 </div>
 
-                <!-- Forced Transcoding Toggle -->
-                <div class="flex items-center gap-3 bg-dark-card border border-slate-800 px-4 py-2 rounded-xl">
-                    <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                        <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-indigo-400"></i>
-                        Forced Transcoding
-                    </span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="forcedTranscodeToggle" class="sr-only peer" checked>
-                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
+                <!-- Transcode Mode Toggles -->
+                <div class="flex items-center gap-4 bg-dark-card border border-slate-800 px-4 py-2 rounded-xl">
+                    <div class="flex items-center gap-2" title="Automatically force transcoding only for items with detected black bar crops">
+                        <span class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                            <i data-lucide="crop" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            Transcode Cropped
+                        </span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="forceCroppedToggle" class="sr-only peer" checked>
+                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="h-4 w-px bg-slate-800"></div>
+
+                    <div class="flex items-center gap-2" title="Globally force transcoding on ALL streams across the server">
+                        <span class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-rose-400"></i>
+                            Force All
+                        </span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="forceAllToggle" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600"></div>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Actions -->
