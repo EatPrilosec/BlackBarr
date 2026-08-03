@@ -32,11 +32,11 @@ auto_inject_config() {
             chown "$dir_uid_gid" "$target_wrapper" 2>/dev/null || true
         fi
         if [ "$server_name" = "Emby" ]; then
-            local target_emby_run="$target_dir/emby-server-run.sh"
-            cat << 'EOF' > "$target_emby_run"
+            local target_emby_preinit="$target_dir/00-emby-preinit.sh"
+            cat << 'EOF' > "$target_emby_preinit"
 #!/command/with-contenv sh
 
-# BlackBarr Emby Dynamic FFmpeg Wrapper Pre-Init Hook
+# BlackBarr Emby Container Pre-Init Hook
 if [ ! -L /bin/ffmpeg ]; then
     if [ -f /bin/ffmpeg ]; then
         cp -f /bin/ffmpeg /bin/ffmpeg.real 2>/dev/null || true
@@ -44,32 +44,12 @@ if [ ! -L /bin/ffmpeg ]; then
     fi
     ln -sf /config/ffmpeg-wrapper.sh /bin/ffmpeg
 fi
-
-[ -n "$PUID" ] && UID="$PUID"
-[ -n "$PGID" ] && GID="$PGID"
-[ -n "$UMASK" ] && umask "$UMASK"
-
-if [ "$(ls -nd /config | tr -s '[:space:]' | cut -d' ' -f3)" -ne "$UID" ] || [ "$(ls -nd /config | tr -s '[:space:]' | cut -d' ' -f4)" -ne "$GID" ]; then
-  chown "$UID":"$GID" -R /config
-fi
-
-for d in $(find /dev/dri -type c 2>/dev/null); do
-  gid=$(stat -c %g "${d}")
-  [ -z "${GIDLIST}" ] && GIDLIST=${gid} || GIDLIST="${GIDLIST},${gid}"
-done
-
-exec s6-applyuidgid -U /system/EmbyServer \
-    -programdata /config \
-    -ffdetect /bin/ffdetect \
-    -ffmpeg /bin/ffmpeg \
-    -ffprobe /bin/ffprobe \
-    -restartexitcode 3
 EOF
-            chmod 755 "$target_emby_run"
+            chmod 755 "$target_emby_preinit"
             if [ -n "$dir_uid_gid" ]; then
-                chown "$dir_uid_gid" "$target_emby_run" 2>/dev/null || true
+                chown "$dir_uid_gid" "$target_emby_preinit" 2>/dev/null || true
             fi
-            echo "[BlackBarr] Generated Emby pre-init launcher at $target_emby_run"
+            echo "[BlackBarr] Generated Emby pre-init hook at $target_emby_preinit"
         fi
     fi
 }
