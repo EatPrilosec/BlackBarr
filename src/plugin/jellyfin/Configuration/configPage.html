@@ -74,12 +74,14 @@
                         if (typeof result === 'string') {
                             try { resData = JSON.parse(result); } catch (e) {}
                         }
-                        var msg = resData ? (resData.Message || resData.message || 'Connection test completed.') : 'No response from server.';
-                        Dashboard.alert(msg);
+                        var isSuccess = resData && (resData.Success === true || resData.success === true);
+                        var body = resData ? (resData.Message || resData.message || JSON.stringify(resData)) : 'No response from server.';
+                        var finalMsg = isSuccess ? ('✅ SUCCESS: ' + body) : ('❌ FAILED: ' + body);
+                        Dashboard.alert(finalMsg);
                     }).catch(function (err) {
                         Dashboard.hideLoadingMsg();
                         var msg = (err && err.responseText) ? err.responseText : (err ? (err.message || JSON.stringify(err)) : 'Unknown error');
-                        Dashboard.alert('Error communicating with server: ' + msg);
+                        Dashboard.alert('❌ FAILED to communicate with Jellyfin backend: ' + msg);
                     });
                 });
 
