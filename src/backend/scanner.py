@@ -182,13 +182,17 @@ class CropScanner:
             # Couldn't detect or no crop lines found
             return None, is_hdr, "PROCESSED"
 
-        # Multi-Aspect Ratio (MAR) Detection (e.g. IMAX switching scenes):
+        # Robust Multi-Aspect Ratio (MAR / IMAX) Detection:
         if len(crop_samples) >= 3:
-            h_values = [c[1] for c in crop_samples]
-            w_values = [c[0] for c in crop_samples]
-            if (max(h_values) - min(h_values)) >= 32 or (max(w_values) - min(w_values)) >= 32:
-                logger.info(f"[Scanner] Multi-Aspect Ratio (MAR) media detected for {file_path} (height range {min(h_values)}-{max(h_values)}px). Leaving untouched as NO CROP.")
-                return None, is_hdr, "MAR"
+            # Require at least 2 distinct crop height/width modes that each appear in >= 2 samples
+            mode_counts = Counter([(c[0], c[1]) for c in crop_samples])
+            sig_modes = [m for m, cnt in mode_counts.items() if cnt >= 2]
+            if len(sig_modes) >= 2:
+                sig_heights = [m[1] for m in sig_modes]
+                sig_widths = [m[0] for m in sig_modes]
+                if (max(sig_heights) - min(sig_heights)) >= 48 or (max(sig_widths) - min(sig_widths)) >= 48:
+                    logger.info(f"[Scanner] Multi-Aspect Ratio (MAR / IMAX) media detected for {file_path} (height modes: {sig_heights}). Leaving untouched as NO CROP.")
+                    return None, is_hdr, "MAR"
 
         # Find consensus crop mode
         counter = Counter(crop_samples)
