@@ -140,26 +140,16 @@ function setupEventListeners() {
 
     // Batch Rescan Selected Button
     document.getElementById('btnBatchRescan').addEventListener('click', async () => {
-        if (selectedMediaIds.size === 0) return;
-        try {
-            const ids = Array.from(selectedMediaIds);
-            const resp = await fetch('/api/scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: 'selected', media_ids: ids })
-            });
-            if (resp.ok) {
-                showToast(`Rescan initiated for ${ids.length} selected items`, 'success');
-                clearSelection();
-                startScanStatusPolling();
-            } else {
-                const data = await resp.json();
-                showToast(data.detail || 'Batch rescan failed', 'warning');
-            }
-        } catch (err) {
-            showToast('Error triggering batch rescan', 'error');
-        }
+        batchRescanSelected(false);
     });
+
+    // Batch Deep Scan Selected Button
+    const btnBatchDeep = document.getElementById('btnBatchDeepScan');
+    if (btnBatchDeep) {
+        btnBatchDeep.addEventListener('click', async () => {
+            batchRescanSelected(true);
+        });
+    }
 
     // Clear Selection Button
     document.getElementById('btnClearSelection').addEventListener('click', clearSelection);
@@ -251,6 +241,8 @@ async function loadConfig() {
         document.getElementById('cfgHdrLimit').value = config.hdr_crop_limit || "70";
         document.getElementById('cfgSampleCount').value = config.sample_count || "10";
         document.getElementById('cfgScanInterval').value = config.scan_interval_minutes || "60";
+        document.getElementById('cfgDeepSampleCount').value = config.deep_scan_sample_count || "15";
+        document.getElementById('cfgDeepFrameCount').value = config.deep_scan_frame_count || "120";
     } catch (err) {
         console.error("Error loading configuration:", err);
     }
@@ -348,21 +340,21 @@ async function triggerScanMode(mode) {
     }
 }
 
-async function rescanSingleMediaItem(mediaId, event) {
+async function rescanSingleMediaItem(mediaId, deep = false, event) {
     if (event) event.stopPropagation();
     
-    const btn = document.getElementById(`btn-rescan-${mediaId}`);
+    const btn = document.getElementById(deep ? `btn-deep-${mediaId}` : `btn-rescan-${mediaId}`);
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-indigo-400"></i>`;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin ${deep ? 'text-purple-400' : 'text-indigo-400'}"></i>`;
         lucide.createIcons();
     }
 
     try {
-        const resp = await fetch(`/api/media/${mediaId}/rescan`, { method: 'POST' });
+        const resp = await fetch(`/api/media/${mediaId}/rescan?deep=${deep}`, { method: 'POST' });
         if (resp.ok) {
             const data = await resp.json();
-            showToast('Item rescanned successfully', 'success');
+            showToast(deep ? 'Deep Scan completed successfully' : 'Item rescanned successfully', 'success');
             await loadStats();
             await loadMediaTable();
         } else {
@@ -370,7 +362,7 @@ async function rescanSingleMediaItem(mediaId, event) {
             showToast(data.detail || 'Rescan failed', 'error');
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>`;
+                btn.innerHTML = `<i data-lucide="${deep ? 'zap' : 'refresh-cw'}" class="w-3.5 h-3.5"></i>`;
                 lucide.createIcons();
             }
         }
@@ -378,9 +370,37 @@ async function rescanSingleMediaItem(mediaId, event) {
         showToast('Error rescanning item', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>`;
+            btn.innerHTML = `<i data-lucide="${deep ? 'zap' : 'refresh-cw'}" class="w-3.5 h-3.5"></i>`;
             lucide.createIcons();
         }
+    }
+}
+
+async function batchRescanSelected(deep = false) {
+    if (selectedMediaIds.size === 0) return;
+
+    try {
+        const payload = {
+            mode: 'selected',
+            media_ids: Array.from(selectedMediaIds),
+            deep: deep
+        };
+
+        const resp = await fetch('/api/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (resp.ok) {
+            showToast(`${deep ? 'Deep Scan' : 'Rescan'} initiated for ${selectedMediaIds.size} items`, 'success');
+            clearSelection();
+            startScanStatusPolling();
+        } else {
+            showToast('Batch rescan failed', 'error');
+        }
+    } catch (err) {
+        showToast('Error starting batch rescan', 'error');
     }
 }
 
@@ -478,8 +498,11 @@ function renderMediaTable(items) {
                 <td class="py-3.5 px-4 text-xs text-slate-400">${item.updated_at || 'N/A'}</td>
                 <td class="py-3.5 px-6 text-right">
                     <div class="flex items-center justify-end gap-2">
-                        <button id="btn-rescan-${item.id}" onclick="rescanSingleMediaItem(${item.id}, event)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-900/40 text-slate-300 hover:text-indigo-400 transition-all" title="Rescan File">
+                        <button id="btn-rescan-${item.id}" onclick="rescanSingleMediaItem(${item.id}, false, event)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-900/40 text-slate-300 hover:text-indigo-400 transition-all" title="Standard Rescan">
                             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button id="btn-deep-${item.id}" onclick="rescanSingleMediaItem(${item.id}, true, event)" class="p-1.5 rounded-lg bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 hover:text-purple-200 border border-purple-500/30 transition-all" title="Deep Scan (High Precision)">
+                            <i data-lucide="zap" class="w-3.5 h-3.5"></i>
                         </button>
                         <button onclick="editMediaItem(${item.id})" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Edit Entry">
                             <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
@@ -648,7 +671,9 @@ async function handleSettingsSubmit(e) {
         sdr_crop_limit: document.getElementById('cfgSdrLimit').value.trim(),
         hdr_crop_limit: document.getElementById('cfgHdrLimit').value.trim(),
         sample_count: document.getElementById('cfgSampleCount').value.trim(),
-        scan_interval_minutes: document.getElementById('cfgScanInterval').value.trim()
+        scan_interval_minutes: document.getElementById('cfgScanInterval').value.trim(),
+        deep_scan_sample_count: document.getElementById('cfgDeepSampleCount').value.trim() || "15",
+        deep_scan_frame_count: document.getElementById('cfgDeepFrameCount').value.trim() || "120"
     };
 
     try {

@@ -80,48 +80,52 @@ async def get_media_list(
     }
 
 class ScanRequestModel(BaseModel):
-    mode: str = "new"  # "new", "full", "selected", "filtered"
+    mode: str = "new"  # "new", "full", "selected", "filtered", "deep", "deep_filtered"
     media_ids: Optional[List[int]] = None
     search: Optional[str] = ""
     status: Optional[str] = ""
     is_hdr: Optional[bool] = None
     path_prefix: Optional[str] = ""
+    deep: bool = False
 
 @router.post("/scan")
 async def trigger_scan(
     background_tasks: BackgroundTasks, 
     payload: Optional[ScanRequestModel] = None,
-    force: bool = Query(False)
+    force: bool = Query(False),
+    deep: bool = Query(False)
 ):
     if scanner_instance.is_scanning:
         raise HTTPException(status_code=400, detail="Scan is already in progress")
     
     if payload:
+        is_deep = payload.deep or payload.mode in ["deep", "deep_filtered"]
         if payload.mode == "selected" and payload.media_ids:
-            background_tasks.add_task(scanner_instance.scan_items_by_ids, payload.media_ids)
-            return {"message": f"Rescan initiated for {len(payload.media_ids)} items", "mode": "selected"}
-        elif payload.mode == "filtered":
+            background_tasks.add_task(scanner_instance.scan_items_by_ids, payload.media_ids, deep=is_deep)
+            return {"message": f"Rescan initiated for {len(payload.media_ids)} items", "mode": "selected", "deep": is_deep}
+        elif payload.mode in ["filtered", "deep_filtered"]:
             background_tasks.add_task(
                 scanner_instance.scan_by_filter, 
                 search=payload.search or "", 
                 status=payload.status or "", 
                 is_hdr=payload.is_hdr,
-                path_prefix=payload.path_prefix or ""
+                path_prefix=payload.path_prefix or "",
+                deep=is_deep
             )
-            return {"message": "Filtered library rescan initiated", "mode": "filtered"}
-        elif payload.mode == "full":
-            background_tasks.add_task(scanner_instance.run_scan, force=True)
-            return {"message": "Full library rescan initiated", "mode": "full"}
+            return {"message": "Filtered library rescan initiated", "mode": payload.mode, "deep": is_deep}
+        elif payload.mode in ["full", "deep"]:
+            background_tasks.add_task(scanner_instance.run_scan, force=True, deep=is_deep)
+            return {"message": "Full library rescan initiated", "mode": payload.mode, "deep": is_deep}
         else:
-            background_tasks.add_task(scanner_instance.run_scan, force=False)
-            return {"message": "Library scan for new/changed files initiated", "mode": "new"}
+            background_tasks.add_task(scanner_instance.run_scan, force=False, deep=is_deep)
+            return {"message": "Library scan for new/changed files initiated", "mode": "new", "deep": is_deep}
     
     # Fallback for query param (backward compatibility)
-    background_tasks.add_task(scanner_instance.run_scan, force=force)
-    return {"message": "Library scan initiated", "force": force}
+    background_tasks.add_task(scanner_instance.run_scan, force=force, deep=deep)
+    return {"message": "Library scan initiated", "force": force, "deep": deep}
 
 @router.post("/media/{media_id}/rescan")
-async def rescan_single_media_item(media_id: int):
+async def rescan_single_media_item(media_id: int, deep: bool = Query(False)):
     async with get_db() as db:
         async with db.execute("SELECT file_path FROM media_files WHERE id = ?", (media_id,)) as cursor:
             row = await cursor.fetchone()
@@ -129,12 +133,12 @@ async def rescan_single_media_item(media_id: int):
                 raise HTTPException(status_code=404, detail="Media item not found")
             file_path = row["file_path"]
 
-    await scanner_instance.scan_file(file_path, force=True)
+    await scanner_instance.scan_file(file_path, force=True, deep=deep)
 
     async with get_db() as db:
         async with db.execute("SELECT * FROM media_files WHERE id = ?", (media_id,)) as cursor:
             updated_row = await cursor.fetchone()
-            return {"message": "Media item rescanned successfully", "item": dict(updated_row)}
+            return {"message": "Media item rescanned successfully", "item": dict(updated_row), "deep": deep}
 
 @router.get("/scan/status")
 async def get_scan_status():

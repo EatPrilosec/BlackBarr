@@ -23,6 +23,9 @@ class CropScanner:
         self.scanned_files = 0
         self.current_file = ""
         self._stop_event = asyncio.Event()
+        self.has_vaapi = os.path.exists("/dev/dri/renderD128") or os.path.exists("/dev/dri")
+        if self.has_vaapi:
+            logger.info("[CropScanner] VAAPI GPU Hardware Acceleration detected and enabled for media scans.")
 
     def compute_fast_hash(self, file_path: str, size: int, mtime: float) -> str:
         data = f"{file_path}:{size}:{mtime}"
@@ -76,40 +79,57 @@ class CropScanner:
             logger.error(f"Error running ffprobe on {file_path}: {e}")
             return 0.0, 0, 0, False
 
-    async def detect_crop_for_timestamp(self, file_path: str, timestamp_sec: float, limit: str) -> Optional[Tuple[int, int, int, int]]:
+    async def detect_crop_for_timestamp(self, file_path: str, timestamp_sec: float, limit: str, sample_frames: int = 20) -> Optional[Tuple[int, int, int, int]]:
         """
         Runs ffmpeg cropdetect on a specific timestamp and returns parsed (w, h, x, y).
+        Uses VAAPI hardware acceleration if available, falling back to software if needed.
         """
-        cmd = [
+        cmds_to_try = []
+
+        if self.has_vaapi:
+            cmds_to_try.append([
+                "ffmpeg",
+                "-ss", str(int(timestamp_sec)),
+                "-hwaccel", "vaapi",
+                "-hwaccel_output_format", "vaapi",
+                "-i", file_path,
+                "-vframes", str(sample_frames),
+                "-vf", f"hwdownload,format=nv12,cropdetect=limit={limit}:round=2",
+                "-f", "null",
+                "-"
+            ])
+
+        cmds_to_try.append([
             "ffmpeg",
             "-ss", str(int(timestamp_sec)),
             "-i", file_path,
-            "-vframes", "20",
+            "-vframes", str(sample_frames),
             "-vf", f"cropdetect=limit={limit}:round=2",
             "-f", "null",
             "-"
-        ]
+        ])
 
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            _, stderr = await proc.communicate()
-            output = stderr.decode("utf-8", errors="ignore")
+        for cmd in cmds_to_try:
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                _, stderr = await proc.communicate()
+                output = stderr.decode("utf-8", errors="ignore")
 
-            # Match crop=w:h:x:y lines in ffmpeg output
-            matches = re.findall(r"crop=(\d+):(\d+):(\d+):(\d+)", output)
-            if matches:
-                # Return the last detected crop in this sample window
-                w, h, x, y = matches[-1]
-                return int(w), int(h), int(x), int(y)
-        except Exception as e:
-            logger.debug(f"Cropdetect failed at timestamp {timestamp_sec} for {file_path}: {e}")
+                # Match crop=w:h:x:y lines in ffmpeg output
+                matches = re.findall(r"crop=(\d+):(\d+):(\d+):(\d+)", output)
+                if matches:
+                    # Return the last detected crop in this sample window
+                    w, h, x, y = matches[-1]
+                    return int(w), int(h), int(x), int(y)
+            except Exception as e:
+                logger.debug(f"Cropdetect pass failed at timestamp {timestamp_sec} for {file_path}: {e}")
         return None
 
-    async def analyze_file(self, file_path: str, sdr_limit: str, hdr_limit: str, sample_count: int = 10) -> Tuple[Optional[str], bool, str]:
+    async def analyze_file(self, file_path: str, sdr_limit: str, hdr_limit: str, sample_count: int = 10, frame_count: int = 20, is_deep: bool = False) -> Tuple[Optional[str], bool, str]:
         """
         Analyzes media file and returns (crop_val, is_hdr, status).
         """
@@ -129,6 +149,10 @@ class CropScanner:
 
         limit = _format_limit(hdr_limit, "70") if is_hdr else _format_limit(sdr_limit, "24")
 
+        if is_deep:
+            sample_count = int(await get_config("deep_scan_sample_count", "15"))
+            frame_count = int(await get_config("deep_scan_frame_count", "120"))
+
         # Sample timestamps starting at +5 minutes (300 seconds) if duration permits
         start_time = 300.0 if duration > 600.0 else (duration * 0.1)
         end_time = duration - 300.0 if duration > 900.0 else (duration * 0.9)
@@ -141,7 +165,7 @@ class CropScanner:
 
         crop_samples: List[Tuple[int, int, int, int]] = []
         for ts in timestamps:
-            crop_res = await self.detect_crop_for_timestamp(file_path, ts, limit)
+            crop_res = await self.detect_crop_for_timestamp(file_path, ts, limit, sample_frames=frame_count)
             if crop_res:
                 crop_samples.append(crop_res)
 
@@ -154,6 +178,25 @@ class CropScanner:
         most_common_crop, count = counter.most_common(1)[0]
         w, h, x, y = most_common_crop
 
+        # Adaptive Dual-Pass & Outlier Normalization for HDR / Film Grain Artifacts:
+        if is_hdr and 0 < y <= 4:
+            verify_limit = "30"
+            mid_ts = timestamps[len(timestamps) // 2]
+            v_res = await self.detect_crop_for_timestamp(file_path, mid_ts, verify_limit, sample_frames=frame_count)
+            if v_res:
+                vw, vh, vx, vy = v_res
+                if vy == 0:
+                    logger.info(f"[Scanner] Dual-pass verification corrected top-edge artifact y={y} -> y=0 for {file_path}")
+                    h = h + y
+                    y = 0
+
+        if x == 0 and 0 < y <= 4:
+            bottom_space = orig_h - (y + h)
+            if bottom_space > 50:
+                logger.info(f"[Scanner] Normalizing asymmetric top-edge noise ({w}:{h}:{x}:{y}) -> ({w}:{h+y}:0:0) for {file_path}")
+                h = h + y
+                y = 0
+
         # Check if crop is virtually full frame (no significant letterboxing or pillarboxing detected)
         if abs(w - orig_w) <= 8 and abs(h - orig_h) <= 8:
             return None, is_hdr, "PROCESSED"
@@ -161,7 +204,7 @@ class CropScanner:
             crop_str = f"{w}:{h}:{x}:{y}"
             return crop_str, is_hdr, "PROCESSED"
 
-    async def scan_file(self, file_path: str, force: bool = False):
+    async def scan_file(self, file_path: str, force: bool = False, deep: bool = False):
         try:
             stat = os.stat(file_path)
             size = stat.st_size
@@ -173,20 +216,21 @@ class CropScanner:
         fast_hash = self.compute_fast_hash(file_path, size, mtime)
         existing = await get_media_by_path(file_path)
 
-        if not force and existing:
+        if not force and not deep and existing:
             if existing["file_hash"] == fast_hash and existing["status"] in ["PROCESSED", "SKIPPED"]:
                 logger.debug(f"Skipping unchanged file: {file_path}")
                 return
 
-        logger.info(f"Scanning media file: {file_path}")
+        scan_type = "Deep Scan" if deep else "Standard Scan"
+        logger.info(f"[{scan_type}] Scanning media file: {file_path}")
         self.current_file = file_path
 
         sdr_limit = await get_config("sdr_crop_limit", "24")
-        hdr_limit = await get_config("hdr_crop_limit", "0.05")
+        hdr_limit = await get_config("hdr_crop_limit", "70")
         sample_count = int(await get_config("sample_count", "10"))
 
         try:
-            crop_val, is_hdr, status = await self.analyze_file(file_path, sdr_limit, hdr_limit, sample_count)
+            crop_val, is_hdr, status = await self.analyze_file(file_path, sdr_limit, hdr_limit, sample_count=sample_count, is_deep=deep)
             await upsert_media(
                 file_path=file_path,
                 file_hash=fast_hash,
@@ -196,7 +240,7 @@ class CropScanner:
                 crop_val=crop_val,
                 status=status
             )
-            logger.info(f"Scan complete for {file_path} -> crop_val: {crop_val}, status: {status}")
+            logger.info(f"[{scan_type}] Complete for {file_path} -> crop_val: {crop_val}, status: {status}")
         except Exception as e:
             logger.error(f"Error during crop analysis of {file_path}: {e}")
             await upsert_media(
@@ -209,7 +253,7 @@ class CropScanner:
                 status="ERROR"
             )
 
-    async def run_scan(self, force: bool = False, directories: Optional[List[str]] = None):
+    async def run_scan(self, force: bool = False, deep: bool = False, directories: Optional[List[str]] = None):
         if self.is_scanning:
             logger.warning("Scan already in progress.")
             return
@@ -222,7 +266,8 @@ class CropScanner:
         self.is_scanning = True
         self.scanned_files = 0
         self.total_files = 0
-        logger.info(f"Starting library scan across directories: {directories}")
+        scan_label = "Deep" if deep else ("Full" if force else "Standard")
+        logger.info(f"Starting [{scan_label}] library scan across directories: {directories}")
 
         def _collect_video_files(dirs: List[str]) -> List[str]:
             files_list = []
@@ -244,14 +289,14 @@ class CropScanner:
             if self._stop_event.is_set():
                 logger.info("Scan stopped by user request.")
                 break
-            await self.scan_file(fpath, force=force)
+            await self.scan_file(fpath, force=force, deep=deep)
             self.scanned_files += 1
 
         self.is_scanning = False
         self.current_file = ""
-        logger.info("Library scan finished.")
+        logger.info(f"[{scan_label}] Library scan finished.")
 
-    async def scan_items_by_ids(self, media_ids: List[int]):
+    async def scan_items_by_ids(self, media_ids: List[int], deep: bool = False):
         if self.is_scanning:
             logger.warning("Scan already in progress.")
             return
@@ -270,20 +315,21 @@ class CropScanner:
         self.is_scanning = True
         self.scanned_files = 0
         self.total_files = len(file_paths)
-        logger.info(f"Starting targeted scan for {self.total_files} items.")
+        scan_label = "Deep" if deep else "Targeted"
+        logger.info(f"Starting [{scan_label}] scan for {self.total_files} items.")
 
         for fpath in file_paths:
             if self._stop_event.is_set():
-                logger.info("Targeted ID scan stopped by user request.")
+                logger.info("Scan stopped by user request.")
                 break
-            await self.scan_file(fpath, force=True)
+            await self.scan_file(fpath, force=True, deep=deep)
             self.scanned_files += 1
 
         self.is_scanning = False
         self.current_file = ""
-        logger.info("Targeted ID scan finished.")
+        logger.info(f"[{scan_label}] ID scan finished.")
 
-    async def scan_by_filter(self, search: str = "", status: str = "", is_hdr: Optional[bool] = None, path_prefix: str = ""):
+    async def scan_by_filter(self, search: str = "", status: str = "", is_hdr: Optional[bool] = None, path_prefix: str = "", deep: bool = False):
         if self.is_scanning:
             logger.warning("Scan already in progress.")
             return
@@ -299,18 +345,19 @@ class CropScanner:
         self.is_scanning = True
         self.scanned_files = 0
         self.total_files = len(file_paths)
-        logger.info(f"Starting filtered scan for {self.total_files} items.")
+        scan_label = "Deep" if deep else "Filtered"
+        logger.info(f"Starting [{scan_label}] scan for {self.total_files} items.")
 
         for fpath in file_paths:
             if self._stop_event.is_set():
-                logger.info("Filtered scan stopped by user request.")
+                logger.info("Scan stopped by user request.")
                 break
-            await self.scan_file(fpath, force=True)
+            await self.scan_file(fpath, force=True, deep=deep)
             self.scanned_files += 1
 
         self.is_scanning = False
         self.current_file = ""
-        logger.info("Filtered scan finished.")
+        logger.info(f"[{scan_label}] scan finished.")
 
     def stop_scan(self):
         if self.is_scanning:
