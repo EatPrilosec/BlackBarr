@@ -87,8 +87,7 @@ services:
     network_mode: host
     devices:
       - /dev/dri:/dev/dri
-    environment:
-      - JELLYFIN_FFMPEG=/config/ffmpeg-wrapper.sh
+    ...
     volumes:
       - /DockerData/jellyfin/config:/config
       - /Storage/Media/Library:/Storage/Media/Library:ro
@@ -102,13 +101,9 @@ services:
   embyserver:
     image: emby/embyserver:latest
     container_name: embyserver
-    network_mode: host
     devices:
       - /dev/dri:/dev/dri
-    environment:
-      - UID=1000
-      - GID=1000
-    volumes:
+    ...
       - /DockerData/emby/programdata:/config
       - /DockerData/emby/programdata/00-emby-preinit.sh:/etc/cont-init.d/00-emby-preinit.sh
       - /Storage/Media/Library:/Storage/Media/Library:ro
