@@ -32,8 +32,8 @@ flowchart TD
 
 ### 2. 🔀 Smart Reverse Proxy
 - Listens on dedicated reverse proxy ports for Jellyfin (`:6796`) and Emby (`:6797`).
-- Intercepts `/PlaybackInfo` endpoints. If an item requires letterbox cropping, BlackBarr mutates the payload to enforce high-bitrate transcoding while preserving full source resolution.
-- All non-cropped media and standard traffic pass through untouched with zero overhead.
+- Intercepts `/PlaybackInfo` endpoints. If an item requires letterbox cropping, BlackBarr mutates the payload to enforce high-bitrate transcoding while preserving full source resolution (minus black bars.)
+- All non-cropped media and standard traffic pass through untouched.
 
 ### 3. ⚙️ POSIX FFmpeg Wrapper
 - A 100% POSIX `/bin/sh` wrapper script (`ffmpeg-wrapper.sh`) auto-injected into Jellyfin and Emby configuration directories.
@@ -117,6 +117,8 @@ services:
         condition: service_healthy
 ```
 
+
+
 ---
 
 ## 🏎️ Hardware Acceleration Setup
@@ -135,11 +137,24 @@ BlackBarr automatically uses Mesa VAAPI drivers (`/dev/dri/renderD128`) for fast
 When QSV flags are detected in FFmpeg parameters, the wrapper automatically injects `vpp_qsv=crop_w=W:crop_h=H:crop_x=X:crop_y=Y,setsar=1`.
 
 ### 3. NVIDIA (NVENC/CUDA)
-Ensure `nvidia-container-toolkit` is installed on your host and pass GPU resources via Docker Compose `deploy.resources.reservations.devices`.
+Ensure `nvidia-container-toolkit` is installed on your host and pass GPU resources via Docker Compose `deploy.resources.reservations.devices`. (untested, no nvidia gpu to test)
 
 ---
 
 ## 📖 Basic Usage Guide
+
+### 0. Setup Confirmations
+Ensure your jellyfin and emby compose elements have the depend lines, and the required env for jellyfin, and init script mount line for emby, so the ffmpeg wrapper can work.
+
+Init and wrapper scripts:
+- BlackBarr installs the wrapper script into your jellyfin and emby config dirs for you
+- BlackBarr installs the init script into the emby server for you as well
+- BlackBarr DOES NOT edit your compose file 
+
+The proxy
+- the proxy is not necessary for this to work, only transcoding. but direct play will not crop black bars.
+- the proxy is only used to trick the server into transcoding files that have crop information, when they would normally directplay.
+- if you want crops to automatically be applied, you must access emby and jellyin through the proxy, that just means you use the new ports, 6796 and 6797 (or whatever ports you setup in the blackbarr compose file,) to access jellyfin and emby now, you will need to point a reverse proxy to those ports now, instead of emby or jellyfins ports. 
 
 ### 1. Accessing the Web UI
 Open your browser to:
