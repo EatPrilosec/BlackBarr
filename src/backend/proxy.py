@@ -192,7 +192,7 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
             out_headers.pop("content-length", None)
 
         return StreamingResponse(
-            resp.aiter_raw(chunk_size=65536),
+            resp.aiter_bytes(),
             status_code=resp.status_code,
             headers=out_headers,
             background=None
