@@ -182,6 +182,14 @@ class CropScanner:
             # Couldn't detect or no crop lines found
             return None, is_hdr, "PROCESSED"
 
+        # Multi-Aspect Ratio (MAR) Detection (e.g. IMAX switching scenes):
+        if len(crop_samples) >= 3:
+            h_values = [c[1] for c in crop_samples]
+            w_values = [c[0] for c in crop_samples]
+            if (max(h_values) - min(h_values)) >= 32 or (max(w_values) - min(w_values)) >= 32:
+                logger.info(f"[Scanner] Multi-Aspect Ratio (MAR) media detected for {file_path} (height range {min(h_values)}-{max(h_values)}px). Leaving untouched as NO CROP.")
+                return None, is_hdr, "MAR"
+
         # Find consensus crop mode
         counter = Counter(crop_samples)
         most_common_crop, count = counter.most_common(1)[0]
@@ -216,9 +224,24 @@ class CropScanner:
         # Check if crop is virtually full frame (no significant letterboxing or pillarboxing detected)
         if abs(w - orig_w) <= 8 and abs(h - orig_h) <= 8:
             return None, is_hdr, "PROCESSED"
+
+        # Calculate Symmetrical Top & Bottom Offset Centering:
+        y_sym = y
+        x_sym = x
+
+        if h < orig_h - 16:
+            calc_y = max(0, (orig_h - h) // 2)
+            y_sym = (calc_y // 2) * 2  # Ensure even pixel offset
+
+        if w < orig_w - 16:
+            calc_x = max(0, (orig_w - w) // 2)
+            x_sym = (calc_x // 2) * 2
         else:
-            crop_str = f"{w}:{h}:{x}:{y}"
-            return crop_str, is_hdr, "PROCESSED"
+            x_sym = 0
+
+        crop_str = f"{w}:{h}:{x_sym}:{y_sym}"
+        logger.info(f"[Scanner] Final crop string for {file_path}: {crop_str} (orig {orig_w}x{orig_h})")
+        return crop_str, is_hdr, "PROCESSED"
 
     async def scan_file(self, file_path: str, force: bool = False, deep: bool = False):
         try:

@@ -464,6 +464,10 @@ function renderMediaTable(items) {
                     <i data-lucide="check" class="w-3 h-3"></i> No Black Bars
                 </span>`;
             }
+        } else if (item.status === 'MAR') {
+            statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20" title="Multi-Aspect Ratio (IMAX / Dynamic Ratio) - Left Untouched">
+                <i data-lucide="layers" class="w-3 h-3 text-purple-400"></i> MAR (IMAX)
+            </span>`;
         } else if (item.status === 'PENDING') {
             statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 <i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Pending
@@ -478,9 +482,14 @@ function renderMediaTable(items) {
             </span>`;
         }
 
-        const cropValDisplay = isCropped 
-            ? `<code class="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-emerald-400 font-mono text-xs">${escapeHtml(item.crop_val)}</code>`
-            : `<span class="text-slate-500 text-xs italic">Full Frame</span>`;
+        let cropValDisplay = '';
+        if (item.status === 'MAR') {
+            cropValDisplay = `<span class="text-purple-400 text-xs italic font-medium">Multi-Aspect Ratio</span>`;
+        } else if (isCropped) {
+            cropValDisplay = `<code class="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-emerald-400 font-mono text-xs">${escapeHtml(item.crop_val)}</code>`;
+        } else {
+            cropValDisplay = `<span class="text-slate-500 text-xs italic">Full Frame</span>`;
+        }
 
         const isChecked = selectedMediaIds.has(item.id) ? 'checked' : '';
 
