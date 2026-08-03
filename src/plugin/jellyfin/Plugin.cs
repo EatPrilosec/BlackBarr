@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.Collections.Generic;
 using Jellyfin.Plugin.BlackBarrHelper.Configuration;
@@ -14,7 +16,7 @@ namespace Jellyfin.Plugin.BlackBarrHelper
 
         public override Guid Id => Guid.Parse("b598b9e4-6a2c-476b-9c71-2191419736c4");
 
-        public override string Description => "Forces transcoding and injects dynamic black bar crop filters into Jellyfin FFmpeg streams.";
+        public override string Description => "Forces transcoding and injects dynamic black bar crop filters into Jellyfin 10.11+ FFmpeg streams.";
 
         public static Plugin? Instance { get; private set; }
 

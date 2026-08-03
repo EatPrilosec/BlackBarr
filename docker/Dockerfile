@@ -1,5 +1,5 @@
-# Stage 1: Build Jellyfin C# Plugin
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS plugin-builder
+# Stage 1: Build Jellyfin C# Plugin (Jellyfin 10.11.11 / .NET 9.0)
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS plugin-builder
 WORKDIR /src
 COPY src/plugin/jellyfin /src
 RUN dotnet publish -c Release -o /out
