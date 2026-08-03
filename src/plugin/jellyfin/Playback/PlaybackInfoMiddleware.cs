@@ -29,7 +29,7 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
             var path = context.Request.Path.Value ?? string.Empty;
             var query = context.Request.QueryString.Value ?? string.Empty;
 
-            if (query.Contains("TestConnection", StringComparison.OrdinalIgnoreCase) || path.Contains("TestConnection", StringComparison.OrdinalIgnoreCase))
+            if (path.Contains("BlackBarr", StringComparison.OrdinalIgnoreCase) || path.Contains("TestConnection", StringComparison.OrdinalIgnoreCase) || query.Contains("TestConnection", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogInformation("[BlackBarr Helper] Intercepted test connection request at path: {Path}", path);
                 await HandleTestConnectionAsync(context);
@@ -126,8 +126,12 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
 
         private async Task HandleTestConnectionAsync(HttpContext context)
         {
-            context.Response.StatusCode = 200;
-            context.Response.ContentType = "application/json";
+            if (!context.Response.HasStarted)
+            {
+                context.Response.Clear();
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json; charset=utf-8";
+            }
 
             string userUrl = context.Request.Query["Url"].ToString();
 

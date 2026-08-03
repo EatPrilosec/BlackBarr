@@ -67,7 +67,7 @@
                     Dashboard.showLoadingMsg();
                     ApiClient.ajax({
                         type: 'GET',
-                        url: ApiClient.getUrl('Branding/Configuration?TestConnection=1&Url=' + encodeURIComponent(baseUrl))
+                        url: ApiClient.getUrl('BlackBarr/TestConnection?Url=' + encodeURIComponent(baseUrl))
                     }).then(function (result) {
                         Dashboard.hideLoadingMsg();
                         var resData = result;
