@@ -1,6 +1,5 @@
 #!/bin/sh
 # BlackBarr FFmpeg Wrapper & Dynamic Crop Injector (POSIX /bin/sh Compatible)
-set -e
 
 DB_PATH="${BLACKBARR_DB_PATH:-/config/BlackBarr.db}"
 
@@ -65,17 +64,17 @@ fetch_crop_val() {
     _file="$1"
     _host="$2"
     if command -v curl >/dev/null 2>&1; then
-        curl -G -s --data-urlencode "path=$_file" "http://$_host:6795/api/crop_val" 2>/dev/null
+        curl -G -s --connect-timeout 1 -m 2 --data-urlencode "path=$_file" "http://$_host:6795/api/crop_val" 2>/dev/null || true
     elif command -v wget >/dev/null 2>&1; then
         _enc=$(echo "$_file" | sed -e 's/ /%20/g' -e 's/\[/%5B/g' -e 's/\]/%5D/g')
-        wget -qO- "http://$_host:6795/api/crop_val?path=$_enc" 2>/dev/null
+        wget -T 2 -t 1 -qO- "http://$_host:6795/api/crop_val?path=$_enc" 2>/dev/null || true
     fi
 }
 
 # If input file was found, query BlackBarr API for crop value
 if [ -n "$INPUT_FILE" ]; then
-    for host in 127.0.0.1 localhost blackbarr; do
-        RES=$(fetch_crop_val "$INPUT_FILE" "$host")
+    for host in blackbarr 127.0.0.1 localhost; do
+        RES=$(fetch_crop_val "$INPUT_FILE" "$host" || true)
         if [ -n "$RES" ]; then
             CROP_VAL=$(echo "$RES" | grep -o 'crop=[^"]*' | sed 's/crop=//' || true)
             if [ -n "$CROP_VAL" ]; then
