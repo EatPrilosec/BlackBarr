@@ -3,6 +3,7 @@
 [![Docker](https://img.shields.io/badge/Docker-GHCR-blue?logo=docker)](https://github.com/EatPrilosec/BlackBarr)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11-yellow?logo=python)](https://www.python.org/)
+[![Donate PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://paypal.me/DVDIsDead)
 
 **BlackBarr** is an automated media pipeline middleware and proxy for **Jellyfin** and **Emby**. It automatically detects black bars (letterboxing/pillarboxing) in your video library and dynamically injects hardware-accelerated crop filters into playback streams on the fly — eliminating black bars so media plays in **full native aspect ratio** across all devices.
 
