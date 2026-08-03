@@ -64,6 +64,30 @@ app.add_middleware(
 )
 app.include_router(api_router)
 
+@app.get("/health")
+@app.get("/api/health")
+async def health_check():
+    """
+    Healthcheck endpoint for Docker health checks.
+    Verifies server status and confirms all required script files are generated as regular files (not directories).
+    """
+    jf_dir = "/target-jellyfin-config"
+    if os.path.exists(jf_dir):
+        wrapper = os.path.join(jf_dir, "ffmpeg-wrapper.sh")
+        if not os.path.exists(wrapper) or os.path.isdir(wrapper):
+            return Response(content='{"status": "unhealthy", "reason": "Jellyfin ffmpeg-wrapper.sh missing or is a directory"}', status_code=503, media_type="application/json")
+
+    emby_dir = "/target-emby-config"
+    if os.path.exists(emby_dir):
+        wrapper = os.path.join(emby_dir, "ffmpeg-wrapper.sh")
+        preinit = os.path.join(emby_dir, "00-emby-preinit.sh")
+        if not os.path.exists(wrapper) or os.path.isdir(wrapper):
+            return Response(content='{"status": "unhealthy", "reason": "Emby ffmpeg-wrapper.sh missing or is a directory"}', status_code=503, media_type="application/json")
+        if not os.path.exists(preinit) or os.path.isdir(preinit):
+            return Response(content='{"status": "unhealthy", "reason": "Emby 00-emby-preinit.sh missing or is a directory"}', status_code=503, media_type="application/json")
+
+    return {"status": "healthy"}
+
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend"))
 
 @app.middleware("http")

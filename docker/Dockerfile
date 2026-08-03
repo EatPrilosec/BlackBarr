@@ -30,4 +30,6 @@ VOLUME ["/config", "/media"]
 
 EXPOSE 6795 6796 6797
 
+HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:6795/health || exit 1
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

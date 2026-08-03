@@ -23,8 +23,12 @@ auto_inject_config() {
         local dir_uid_gid
         dir_uid_gid=$(stat -c "%u:%g" "$target_dir" 2>/dev/null || true)
 
-        # Copy wrapper script and make executable
+        # Ensure target_wrapper is a file, not an accidentally created directory
         local target_wrapper="$target_dir/ffmpeg-wrapper.sh"
+        if [ -d "$target_wrapper" ]; then
+            echo "[BlackBarr] Removing invalid directory at $target_wrapper..."
+            rm -rf "$target_wrapper"
+        fi
         cp -f "$WRAPPER_SRC" "$target_wrapper"
         chmod 755 "$target_wrapper"
         
@@ -33,6 +37,10 @@ auto_inject_config() {
         fi
         if [ "$server_name" = "Emby" ]; then
             local target_emby_preinit="$target_dir/00-emby-preinit.sh"
+            if [ -d "$target_emby_preinit" ]; then
+                echo "[BlackBarr] Removing invalid directory at $target_emby_preinit..."
+                rm -rf "$target_emby_preinit"
+            fi
             cat << 'EOF' > "$target_emby_preinit"
 #!/command/with-contenv sh
 
