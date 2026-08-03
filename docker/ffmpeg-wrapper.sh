@@ -120,8 +120,15 @@ for ((i=0; i<${#ARGS[@]}; i++)); do
         NEW_ARGS+=("$arg")
         if (( i + 1 < ${#ARGS[@]} )); then
             ORIG_FILTER="${ARGS[i+1]}"
-            # Prepend crop filter to existing filter chain
-            NEW_ARGS+=("${CROP_FILTER},${ORIG_FILTER}")
+            # Check if filter starts with stream specifier like [0:0] or [0:v] for Emby
+            if [[ "$ORIG_FILTER" =~ ^\[[0-9a-zA-Z:]+\] ]]; then
+                SPEC="${BASH_REMATCH[0]}"
+                NEW_FILTER="${ORIG_FILTER/"$SPEC"/"$SPEC"$CROP_FILTER,}"
+                NEW_ARGS+=("$NEW_FILTER")
+            else
+                # Prepend crop filter to existing filter chain
+                NEW_ARGS+=("${CROP_FILTER},${ORIG_FILTER}")
+            fi
             i=$((i + 1))
             FILTER_INJECTED=1
         fi

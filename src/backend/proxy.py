@@ -50,17 +50,25 @@ async def check_item_requires_cropping(item_id: Optional[str] = None, file_path:
 
 def mutate_playback_info_request_payload(body_bytes: bytes) -> bytes:
     """
-    Mutates incoming PlaybackInfo JSON payload to disable direct play/stream.
+    Mutates incoming PlaybackInfo JSON payload to disable direct play/stream and preserve maximum bitrate for Emby/Jellyfin.
     """
     try:
+        if not body_bytes:
+            return body_bytes
         data = json.loads(body_bytes.decode("utf-8"))
         data["EnableDirectPlay"] = False
         data["EnableDirectStream"] = False
         data["EnableTranscoding"] = True
+        data["AllowVideoStreamCopy"] = False
+        data["AllowAudioStreamCopy"] = True
+        
+        # Override client-side 4Mbps bitrate limit for high-quality transcoding
+        data["MaxStreamingBitrate"] = 140000000
         
         if "DeviceProfile" in data and isinstance(data["DeviceProfile"], dict):
             dp = data["DeviceProfile"]
             dp["DirectPlayProfiles"] = []
+            dp["MaxStreamingBitrate"] = 140000000
         
         return json.dumps(data).encode("utf-8")
     except Exception as e:
@@ -109,13 +117,19 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
     headers.pop("host", None)
     
     body = await request.body()
-    is_playback_info = "/PlaybackInfo" in path or "/Sessions" in path
+    is_playback_info = "PlaybackInfo" in path or "/Sessions" in path
     
     should_force = False
     item_id = None
     
     if is_playback_info:
-        parts = path.strip("/").split("/")
+        clean_path = path
+        if clean_path.startswith("/emby"):
+            clean_path = clean_path[5:]
+        elif clean_path.startswith("/jellyfin"):
+            clean_path = clean_path[9:]
+
+        parts = clean_path.strip("/").split("/")
         if len(parts) >= 3 and parts[0] == "Items" and parts[2] == "PlaybackInfo":
             item_id = parts[1]
         
@@ -130,6 +144,9 @@ async def proxy_to_target(request: Request, default_target: str, config_key: str
 
     if is_playback_info and should_force:
         logger.info(f"[{server_name} Proxy] Intercepting PlaybackInfo for item {item_id or 'unknown'} to enforce transcode response")
+        if body and request.method == "POST":
+            body = mutate_playback_info_request_payload(body)
+            headers.pop("content-length", None)
 
     try:
         req = client.build_request(
