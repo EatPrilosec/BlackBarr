@@ -47,6 +47,16 @@ auto_inject_config() {
             echo "[BlackBarr] Installed/Updated Jellyfin plugin 'BlackBarr Helper' at $plugin_target_dir"
         fi
         if [ "$server_name" = "Emby" ]; then
+            if [ -d "/app/plugins/emby" ]; then
+                local emby_plugins_dir="$target_dir/plugins"
+                mkdir -p "$emby_plugins_dir"
+                cp -rf /app/plugins/emby/* "$emby_plugins_dir/"
+                if [ -n "$dir_uid_gid" ]; then
+                    chown -R "$dir_uid_gid" "$emby_plugins_dir/Emby.Plugin.BlackBarrHelper.dll" 2>/dev/null || true
+                fi
+                echo "[BlackBarr] Installed/Updated Emby plugin 'BlackBarr Helper' at $emby_plugins_dir/Emby.Plugin.BlackBarrHelper.dll"
+            fi
+
             local target_emby_preinit="$target_dir/00-emby-preinit.sh"
             if [ -d "$target_emby_preinit" ]; then
                 echo "[BlackBarr] Removing invalid directory at $target_emby_preinit..."

@@ -1,0 +1,40 @@
+<div is="emby-scroller" class="view flex flex-direction-column scrollFrameY flex-grow" data-horizontal="false" data-forcescrollbar="true" data-centerfocus="true" data-bindheader="true" data-controller="__plugin/blackbarrhelperjs" data-title="BlackBarr Helper">
+    <div class="scrollSlider flex-grow flex-direction-column padded-left padded-left-page padded-right padded-top-page padded-bottom-page">
+        <form class="auto-center" style="max-width: 600px; margin-top: 1em;">
+            <div class="sectionTitleContainer flex align-items-center flex-grow" style="margin-bottom: 1.5em;">
+                <h2 class="sectionTitle" style="font-weight: 600;">BlackBarr Helper Options</h2>
+            </div>
+
+            <div class="inputContainer" style="margin-bottom: 1.5em;">
+                <input is="emby-input" type="text" id="txtBlackBarrUrl" label="BlackBarr API Server URL:" autocomplete="off" />
+                <div class="fieldDescription">Base URL of your BlackBarr container as reached by Emby (e.g. http://127.0.0.1:6795).</div>
+            </div>
+
+            <div style="margin-bottom: 2em;">
+                <button type="button" id="btnTestConnection" is="emby-button" class="raised button-accent">
+                    <span>Test Connection</span>
+                </button>
+            </div>
+
+            <div class="checkboxContainer checkboxContainer-withFieldDescription" style="margin-bottom: 1.5em;">
+                <label>
+                    <input id="chkForceTranscodeCropped" type="checkbox" is="emby-checkbox" />
+                    <span>Force Transcode Cropped Media</span>
+                </label>
+                <div class="fieldDescription">Automatically force transcoding for items with detected black bar crops.</div>
+            </div>
+
+            <div class="checkboxContainer checkboxContainer-withFieldDescription" style="margin-bottom: 2em;">
+                <label>
+                    <input id="chkForceTranscodeAll" type="checkbox" is="emby-checkbox" />
+                    <span>Force Transcode ALL Streams</span>
+                </label>
+                <div class="fieldDescription">Globally force transcoding on all playback sessions across this Emby server.</div>
+            </div>
+
+            <div style="margin-top: 2.5em;">
+                <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
+            </div>
+        </form>
+    </div>
+</div>

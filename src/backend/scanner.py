@@ -237,6 +237,8 @@ class CropScanner:
             x_sym = 0
 
         crop_str = f"{w}:{h}:{x_sym}:{y_sym}"
+        if sar_num != sar_den and sar_num > 0:
+            crop_str += ",setsar=1"
         logger.info(f"[Scanner] Final crop string for {file_path}: {crop_str} (orig {orig_w}x{orig_h})")
         return crop_str, is_hdr, "PROCESSED"
 

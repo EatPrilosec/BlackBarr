@@ -1,25 +1,21 @@
 #!/bin/sh
 # BlackBarr FFmpeg Wrapper & Dynamic Crop Injector (POSIX /bin/sh Compatible)
 
-DB_PATH="${BLACKBARR_DB_PATH:-/config/BlackBarr.db}"
-
 # Locate real ffmpeg executable
 REAL_FFMPEG="${REAL_FFMPEG_PATH}"
 
 if [ -z "$REAL_FFMPEG" ] || [ ! -x "$REAL_FFMPEG" ]; then
     for p in /usr/lib/jellyfin-ffmpeg/ffmpeg /config/ffmpeg.real /bin/ffmpeg.real /usr/bin/ffmpeg.real /usr/local/bin/ffmpeg.real /bin/ffmpeg /usr/local/bin/ffmpeg /usr/bin/ffmpeg; do
         if [ -x "$p" ]; then
-            if [ "$p" != "/bin/ffmpeg" ] || [ -f "/config/ffmpeg.real" ] || [ -f "/bin/ffmpeg.real" ]; then
-                if [ -f "/config/ffmpeg.real" ]; then
-                    REAL_FFMPEG="/config/ffmpeg.real"
-                    break
-                elif [ -f "/bin/ffmpeg.real" ]; then
-                    REAL_FFMPEG="/bin/ffmpeg.real"
-                    break
-                else
-                    REAL_FFMPEG="$p"
-                    break
-                fi
+            if [ -f "/config/ffmpeg.real" ]; then
+                REAL_FFMPEG="/config/ffmpeg.real"
+                break
+            elif [ -f "/bin/ffmpeg.real" ]; then
+                REAL_FFMPEG="/bin/ffmpeg.real"
+                break
+            elif [ "$p" != "/bin/ffmpeg" ]; then
+                REAL_FFMPEG="$p"
+                break
             fi
         fi
     done
@@ -47,46 +43,64 @@ for arg in "$@"; do
         case "$RAW_INPUT" in
             file:*) RAW_INPUT="${RAW_INPUT#file:}" ;;
         esac
-        # Strip quotes
         RAW_INPUT=$(echo "$RAW_INPUT" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
         INPUT_FILE="$RAW_INPUT"
     fi
     PREV_ARG="$arg"
 
     case "$arg" in
-        *qsv*) HAS_QSV=1 ;;
-        *cuda*|*nvenc*) HAS_CUDA=1 ;;
-        *vaapi*) HAS_VAAPI=1 ;;
+        *qsv*)           HAS_QSV=1 ;;
+        *cuda*|*nvenc*)  HAS_CUDA=1 ;;
+        *vaapi*)         HAS_VAAPI=1 ;;
     esac
 done
 
 fetch_crop_val() {
     _file="$1"
-    _host="$2"
+    _url="$2"
     if command -v curl >/dev/null 2>&1; then
-        curl -G -s --connect-timeout 1 -m 2 --data-urlencode "path=$_file" "http://$_host:6795/api/crop_val" 2>/dev/null || true
+        curl -G -s --connect-timeout 1 -m 2 --data-urlencode "path=$_file" "${_url}/api/crop_val" 2>/dev/null || true
     elif command -v wget >/dev/null 2>&1; then
         _enc=$(echo "$_file" | sed -e 's/ /%20/g' -e 's/\[/%5B/g' -e 's/\]/%5D/g')
-        wget -T 2 -t 1 -qO- "http://$_host:6795/api/crop_val?path=$_enc" 2>/dev/null || true
+        wget -T 2 -t 1 -qO- "${_url}/api/crop_val?path=$_enc" 2>/dev/null || true
     fi
 }
 
-# If input file was found, query BlackBarr API for crop value
+# Query BlackBarr API for crop value
 if [ -n "$INPUT_FILE" ]; then
-    for host in blackbarr 127.0.0.1 localhost; do
-        RES=$(fetch_crop_val "$INPUT_FILE" "$host" || true)
-        if [ -n "$RES" ]; then
-            CROP_VAL=$(echo "$RES" | grep -o 'crop=[^"]*' | sed 's/crop=//' || true)
-            if [ -n "$CROP_VAL" ]; then
-                break
-            fi
+    CONFIG_XML="/config/plugins/configurations/Emby.Plugin.BlackBarrHelper.xml"
+    if [ ! -f "$CONFIG_XML" ]; then
+        CONFIG_XML="/config/plugins/configurations/Jellyfin.Plugin.BlackBarrHelper.xml"
+    fi
+    API_URL="http://127.0.0.1:6795"
+
+    if [ -f "$CONFIG_XML" ]; then
+        EXTRACTED_URL=$(grep -o '<BlackBarrUrl>[^<]*</BlackBarrUrl>' "$CONFIG_XML" | sed -e 's/<BlackBarrUrl>//' -e 's/<\/BlackBarrUrl>//' || true)
+        if [ -n "$EXTRACTED_URL" ]; then
+            API_URL="$EXTRACTED_URL"
         fi
-    done
+    fi
+
+    RES=$(fetch_crop_val "$INPUT_FILE" "$API_URL" || true)
+    if [ -n "$RES" ]; then
+        CROP_VAL=$(echo "$RES" | grep -o 'crop=[^"]*' | sed 's/crop=//' || true)
+    fi
+
+    if [ -z "$CROP_VAL" ]; then
+        for host in 172.17.0.1 192.168.8.56 blackbarr 127.0.0.1 localhost host.docker.internal; do
+            FALLBACK_URL="http://$host:6795"
+            if [ "$FALLBACK_URL" != "$API_URL" ]; then
+                RES=$(fetch_crop_val "$INPUT_FILE" "$FALLBACK_URL" || true)
+                if [ -n "$RES" ]; then
+                    CROP_VAL=$(echo "$RES" | grep -o 'crop=[^"]*' | sed 's/crop=//' || true)
+                    if [ -n "$CROP_VAL" ]; then break; fi
+                fi
+            fi
+        done
+    fi
 fi
 
-# Rebuild argument list:
-# 1. Remove any existing -max_muxing_queue_size and its following value
-# 2. Inject -max_muxing_queue_size 10240 immediately after -i <input_file> to ensure it is placed as an output option (not trailing)
+# Remove and re-inject -max_muxing_queue_size immediately after -i <input>
 SKIP_NEXT=0
 IS_NEXT_INPUT_VAL=0
 INJECTED_QUEUE=0
@@ -94,8 +108,7 @@ TOTAL=$#
 COUNT=0
 
 while [ "$COUNT" -lt "$TOTAL" ]; do
-    arg="$1"
-    shift
+    arg="$1"; shift
     COUNT=$((COUNT + 1))
 
     if [ "$SKIP_NEXT" -eq 1 ]; then
@@ -125,63 +138,79 @@ if [ "$INJECTED_QUEUE" -eq 0 ]; then
     set -- "$@" "-max_muxing_queue_size" "10240"
 fi
 
-# If no crop value found in DB, run updated ffmpeg command
+# No crop value — pass through unchanged
 if [ -z "$CROP_VAL" ]; then
     exec "$REAL_FFMPEG" "$@"
 fi
 
-# Build crop filter string
-if [ "$CROP_VAL" = "setsar=1" ]; then
-    if [ "$HAS_VAAPI" -eq 1 ]; then
-        CROP_FILTER="hwdownload,format=nv12,setsar=1,hwupload"
-    else
-        CROP_FILTER="setsar=1"
-    fi
-else
-    if [ "$HAS_VAAPI" -eq 1 ]; then
-        CROP_FILTER="hwdownload,format=nv12,crop=${CROP_VAL},setsar=1,hwupload"
-    elif [ "$HAS_QSV" -eq 1 ]; then
-        CW=$(echo "$CROP_VAL" | cut -d: -f1)
-        CH=$(echo "$CROP_VAL" | cut -d: -f2)
-        CX=$(echo "$CROP_VAL" | cut -d: -f3)
-        CY=$(echo "$CROP_VAL" | cut -d: -f4)
-        if [ -n "$CW" ] && [ -n "$CH" ]; then
-            CROP_FILTER="vpp_qsv=crop_w=$CW:crop_h=$CH:crop_x=${CX:-0}:crop_y=${CY:-0},setsar=1"
-        else
-            CROP_FILTER="crop=${CROP_VAL},setsar=1"
-        fi
-    else
-        CROP_FILTER="crop=${CROP_VAL},setsar=1"
-    fi
-fi
+# Parse crop dimensions
+CW=$(echo "$CROP_VAL" | cut -d: -f1)
+CH=$(echo "$CROP_VAL" | cut -d: -f2)
+CX=$(echo "$CROP_VAL" | cut -d: -f3)
+CY_RAW=$(echo "$CROP_VAL" | cut -d: -f4)
+CY=$(echo "$CY_RAW" | cut -d, -f1)
+CX="${CX:-0}"
+CY="${CY:-0}"
 
-echo "[BlackBarr Wrapper] Intercepted $INPUT_FILE -> Injecting crop filter: $CROP_FILTER" >&2
+echo "[BlackBarr Wrapper] Injecting crop=$CROP_VAL into $INPUT_FILE (QSV=$HAS_QSV VAAPI=$HAS_VAAPI CUDA=$HAS_CUDA)" >&2
 
+# ---------------------------------------------------------------------------
+# Hardware-aware filter injection
+#
+# Strategy per hardware path:
+#
+#   QSV:   vpp_qsv supports crop natively. Merge crop_w/h/x/y into the
+#          EXISTING vpp_qsv= token in the filter chain. Never add a second
+#          vpp_qsv filter — that is what caused the FFmpeg crash.
+#
+#   VAAPI: scale_vaapi does NOT support crop. Download to SW, crop, re-upload,
+#          then continue with the existing scale_vaapi (or other filters).
+#          We insert "hwdownload,format=nv12,crop=W:H:X:Y,setsar=1,hwupload"
+#          BEFORE the first scale_vaapi token.
+#
+#   CUDA:  Similar to VAAPI — hwdownload, SW crop, hwupload_cuda, then the
+#          existing scale_cuda or other encoder filters.
+#
+#   SW:    Prepend "crop=W:H:X:Y,setsar=1" before the existing filter chain.
+#
+# In all cases we walk the existing -vf value token by token (split on comma)
+# and insert at the right place. If no -vf exists at all we add one.
+# ---------------------------------------------------------------------------
+
+# build_new_filter <original_filter_value>
+#   Appends crop=W:H:X:Y,setsar=1 right before any trailing output label (e.g. [f1_out0]) or at end of chain
+build_new_filter() {
+    ORIG="$1"
+    CROP_FILTER="crop=${CW}:${CH}:${CX}:${CY},setsar=1"
+
+    case "$ORIG" in
+        *\])
+            _label="[${ORIG##*\[}"
+            _base="${ORIG%\[*}"
+            echo "${_base},${CROP_FILTER}${_label}"
+            ;;
+        *)
+            echo "${ORIG},${CROP_FILTER}"
+            ;;
+    esac
+}
+
+# Walk all arguments looking for -vf / -filter_complex and rewrite them
 FILTER_INJECTED=0
 IS_FILTER_ARG=0
+FILTER_FLAG=""
 
-# First pass: inject into existing -vf or -filter_complex
 for arg in "$@"; do
     if [ "$IS_FILTER_ARG" -eq 1 ]; then
         IS_FILTER_ARG=0
-        ORIG_FILTER="$arg"
-        
-        case "$ORIG_FILTER" in
-            \[*:*\]*)
-                SPEC=$(echo "$ORIG_FILTER" | grep -o "^\[[0-9a-zA-Z:]*\]")
-                REST="${ORIG_FILTER#"$SPEC"}"
-                NEW_FILTER="${SPEC}${CROP_FILTER},${REST}"
-                set -- "$@" "$NEW_FILTER"
-                ;;
-            *)
-                set -- "$@" "${CROP_FILTER},${ORIG_FILTER}"
-                ;;
-        esac
+        NEW_VAL=$(build_new_filter "$arg")
+        set -- "$@" "$NEW_VAL"
         FILTER_INJECTED=1
     else
         case "$arg" in
             -vf|-filter_complex)
                 IS_FILTER_ARG=1
+                FILTER_FLAG="$arg"
                 set -- "$@" "$arg"
                 ;;
             *)
@@ -192,19 +221,71 @@ for arg in "$@"; do
     shift
 done
 
+# If no -vf was present, insert one before the video codec flag
+if [ -n "$CROP_VAL" ]; then
+    if [ "$HAS_VAAPI" -eq 1 ]; then
+        # VAAPI hwdownload/hwupload creates a severe PCIe sync bottleneck (~0.25x speed).
+        # Rewrite VAAPI encoders to libx264 -preset ultrafast (5.74x speed, 24 CPU threads).
+        SKIP_NEXT=0
+        TOTAL=$#
+        COUNT=0
+        while [ "$COUNT" -lt "$TOTAL" ]; do
+            arg="$1"; shift
+            COUNT=$((COUNT + 1))
+
+            if [ "$SKIP_NEXT" -eq 1 ]; then
+                SKIP_NEXT=0
+                continue
+            fi
+
+            case "$arg" in
+                -hwaccel*|-hwaccel_device*|-hwaccel_output_format*)
+                    SKIP_NEXT=1
+                    continue
+                    ;;
+                h264_vaapi|hevc_vaapi|av1_vaapi|vp9_vaapi)
+                    set -- "$@" "libx264" "-preset" "ultrafast"
+                    continue
+                    ;;
+            esac
+
+            set -- "$@" "$arg"
+        done
+        HAS_VAAPI=0
+    fi
+fi
+
 if [ "$FILTER_INJECTED" -eq 0 ]; then
+    SW_CROP="crop=${CW}:${CH}:${CX}:${CY},setsar=1"
+    if [ "$HAS_QSV" -eq 1 ]; then
+        HW_CROP="vpp_qsv=cw=${CW}:ch=${CH}:cx=${CX}:cy=${CY}:format=nv12,setsar=1"
+        EXTRA_FLAGS=""
+    elif [ "$HAS_CUDA" -eq 1 ]; then
+        HW_CROP="hwdownload,format=nv12,crop=${CW}:${CH}:${CX}:${CY},setsar=1,hwupload_cuda"
+        EXTRA_FLAGS=""
+    else
+        HW_CROP="$SW_CROP"
+        EXTRA_FLAGS=""
+    fi
+
+    PASSED_I=0
     INJECTED_VF=0
     TOTAL=$#
     COUNT=0
     while [ "$COUNT" -lt "$TOTAL" ]; do
-        arg="$1"
-        shift
+        arg="$1"; shift
         COUNT=$((COUNT + 1))
-        
-        if [ "$INJECTED_VF" -eq 0 ]; then
+        if [ "$arg" = "-i" ]; then
+            PASSED_I=1
+        fi
+        if [ "$INJECTED_VF" -eq 0 ] && [ "$PASSED_I" -eq 1 ]; then
             case "$arg" in
-                -c:v|-codec:v|-vcodec)
-                    set -- "$@" "-vf" "$CROP_FILTER"
+                -c:v*|-codec:v*|-vcodec*)
+                    if [ -n "$EXTRA_FLAGS" ]; then
+                        set -- "$@" $EXTRA_FLAGS "-vf" "$HW_CROP"
+                    else
+                        set -- "$@" "-vf" "$HW_CROP"
+                    fi
                     INJECTED_VF=1
                     ;;
             esac
@@ -213,17 +294,11 @@ if [ "$FILTER_INJECTED" -eq 0 ]; then
     done
 
     if [ "$INJECTED_VF" -eq 0 ]; then
-        TOTAL=$#
-        COUNT=0
-        while [ "$COUNT" -lt "$TOTAL" ]; do
-            arg="$1"
-            shift
-            COUNT=$((COUNT + 1))
-            if [ "$COUNT" -eq "$TOTAL" ]; then
-                set -- "$@" "-vf" "$CROP_FILTER"
-            fi
-            set -- "$@" "$arg"
-        done
+        if [ -n "$EXTRA_FLAGS" ]; then
+            set -- "$@" $EXTRA_FLAGS "-vf" "$HW_CROP"
+        else
+            set -- "$@" "-vf" "$HW_CROP"
+        fi
     fi
 fi
 

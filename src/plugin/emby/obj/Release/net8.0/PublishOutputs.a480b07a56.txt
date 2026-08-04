@@ -1,0 +1,3 @@
+/out/Emby.Plugin.BlackBarrHelper.dll
+/out/Emby.Plugin.BlackBarrHelper.deps.json
+/out/Emby.Plugin.BlackBarrHelper.pdb

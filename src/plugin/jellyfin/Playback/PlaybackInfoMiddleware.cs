@@ -57,6 +57,64 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
             var clientEncoding = context.Request.Headers["Accept-Encoding"].ToString();
             context.Request.Headers.Remove("Accept-Encoding");
 
+            // Mutate incoming request payload to force Jellyfin to generate a TranscodingUrl
+            if (context.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    context.Request.EnableBuffering();
+                    using var reqReader = new StreamReader(context.Request.Body, Encoding.UTF8, leaveOpen: true);
+                    string reqJsonString = await reqReader.ReadToEndAsync();
+                    context.Request.Body.Seek(0, SeekOrigin.Begin);
+
+                    if (!string.IsNullOrEmpty(reqJsonString))
+                    {
+                        var reqDoc = JsonNode.Parse(reqJsonString);
+                        if (reqDoc != null)
+                        {
+                            reqDoc["EnableDirectPlay"] = false;
+                            reqDoc["EnableDirectStream"] = false;
+                            reqDoc["EnableTranscoding"] = true;
+                            reqDoc["AllowVideoStreamCopy"] = false;
+                            reqDoc["AllowAudioStreamCopy"] = true;
+                            reqDoc["MaxStreamingBitrate"] = 140000000;
+
+                            if (reqDoc["DeviceProfile"] is JsonObject dp)
+                            {
+                                dp["DirectPlayProfiles"] = new JsonArray();
+                                dp["MaxStreamingBitrate"] = 140000000;
+                                dp["MaxStaticBitrate"] = 140000000;
+                                if (dp["TranscodingProfiles"] is JsonArray tps)
+                                {
+                                    foreach (var tp in tps)
+                                    {
+                                        if (tp != null)
+                                        {
+                                            tp["MaxAudioChannels"] = "6";
+                                            if (tp["MaxStreamingBitrate"] != null)
+                                                tp["MaxStreamingBitrate"] = "140000000";
+                                        }
+                                    }
+                                }
+                            }
+
+                            string mutatedReqJson = reqDoc.ToJsonString();
+                            byte[] mutatedReqBytes = Encoding.UTF8.GetBytes(mutatedReqJson);
+                            var newReqStream = new MemoryStream();
+                            await newReqStream.WriteAsync(mutatedReqBytes, 0, mutatedReqBytes.Length);
+                            newReqStream.Seek(0, SeekOrigin.Begin);
+
+                            context.Request.Body = newReqStream;
+                            context.Request.ContentLength = mutatedReqBytes.Length;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[BlackBarr Helper] Failed to mutate PlaybackInfo incoming request payload");
+                }
+            }
+
             var originalBodyStream = context.Response.Body;
             using var responseBody = new MemoryStream();
             context.Response.Body = responseBody;
@@ -93,7 +151,7 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
                 }
 
                 // Strip UTF-8 BOM if present
-                if (jsonString.StartsWith("\uFEFF"))
+                if (jsonString.StartsWith('\uFEFF'))
                 {
                     jsonString = jsonString.Substring(1);
                 }
@@ -162,25 +220,30 @@ namespace Jellyfin.Plugin.BlackBarrHelper.Playback
             // Re-compress response if client requested gzip/brotli
             if (clientEncoding.Contains("gzip", StringComparison.OrdinalIgnoreCase))
             {
-                using var outMs = new MemoryStream();
-                using (var gzipMs = new GZipStream(outMs, CompressionMode.Compress, leaveOpen: true))
+                using (var outMs = new MemoryStream())
                 {
-                    await gzipMs.WriteAsync(finalBytes, 0, finalBytes.Length);
+                    await using (var gzipMs = new GZipStream(outMs, CompressionMode.Compress, leaveOpen: true))
+                    {
+                        await gzipMs.WriteAsync(finalBytes, 0, finalBytes.Length);
+                    }
+                    finalBytes = outMs.ToArray();
                 }
-                finalBytes = outMs.ToArray();
-                context.Response.Headers.ContentEncoding = "gzip";
+                context.Response.Headers["Content-Encoding"] = "gzip";
             }
             else if (clientEncoding.Contains("br", StringComparison.OrdinalIgnoreCase))
             {
-                using var outMs = new MemoryStream();
-                using (var brotliMs = new BrotliStream(outMs, CompressionLevel.Fastest, leaveOpen: true))
+                using (var outMs = new MemoryStream())
                 {
-                    await brotliMs.WriteAsync(finalBytes, 0, finalBytes.Length);
+                    await using (var brotliMs = new BrotliStream(outMs, CompressionLevel.Fastest, leaveOpen: true))
+                    {
+                        await brotliMs.WriteAsync(finalBytes, 0, finalBytes.Length);
+                    }
+                    finalBytes = outMs.ToArray();
                 }
-                finalBytes = outMs.ToArray();
-                context.Response.Headers.ContentEncoding = "br";
+                context.Response.Headers["Content-Encoding"] = "br";
             }
-
+            
+            context.Response.Headers.Remove("Transfer-Encoding");
             context.Response.ContentLength = finalBytes.Length;
             await originalBodyStream.WriteAsync(finalBytes, 0, finalBytes.Length);
         }

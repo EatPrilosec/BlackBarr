@@ -1,10 +1,16 @@
-# Stage 1: Build Jellyfin C# Plugin (Jellyfin 10.11.11 / .NET 9.0)
+# Stage 1: Build Jellyfin & Emby C# Plugins (.NET 9.0)
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS plugin-builder
 WORKDIR /src
-COPY src/plugin/jellyfin /src
-RUN dotnet publish -c Release -o /out && \
-    rm -rf /out/MediaBrowser* /out/Microsoft* /out/System* /out/ICU4N* /out/J2N* /out/Polly* /out/NEbml* /out/BitFaster* /out/Diacritics* /out/Emby.Naming* /out/Jellyfin.Data* /out/Jellyfin.Database* /out/Jellyfin.Extensions* /out/Jellyfin.MediaEncoding* && \
-    cp /src/meta.json /out/ 2>/dev/null || true
+
+# Build Jellyfin Plugin
+COPY src/plugin/jellyfin /src/jellyfin
+RUN cd /src/jellyfin && dotnet publish -c Release -o /out/jellyfin && \
+    rm -rf /out/jellyfin/MediaBrowser* /out/jellyfin/Microsoft* /out/jellyfin/System* /out/jellyfin/ICU4N* /out/jellyfin/J2N* /out/jellyfin/Polly* /out/jellyfin/NEbml* /out/jellyfin/BitFaster* /out/jellyfin/Diacritics* /out/jellyfin/Emby.Naming* /out/jellyfin/Jellyfin.Data* /out/jellyfin/Jellyfin.Database* /out/jellyfin/Jellyfin.Extensions* /out/jellyfin/Jellyfin.MediaEncoding*
+
+# Build Emby Plugin
+COPY src/plugin/emby /src/emby
+RUN cd /src/emby && dotnet publish -c Release -o /out/emby && \
+    rm -rf /out/emby/MediaBrowser* /out/emby/Microsoft* /out/emby/System*
 
 # Stage 2: Final BlackBarr App Image
 FROM python:3.11-slim
@@ -28,8 +34,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY src /app/src
 
-# Copy compiled C# plugin DLL
-COPY --from=plugin-builder /out /app/plugins/jellyfin
+# Copy compiled C# plugin DLLs
+COPY --from=plugin-builder /out/jellyfin /app/plugins/jellyfin
+COPY --from=plugin-builder /out/emby /app/plugins/emby
 
 # Copy scripts
 COPY docker/ffmpeg-wrapper.sh /usr/local/bin/ffmpeg-wrapper.sh

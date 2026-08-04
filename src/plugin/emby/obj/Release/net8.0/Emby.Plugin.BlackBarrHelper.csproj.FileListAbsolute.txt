@@ -1,0 +1,10 @@
+/src/bin/Release/net8.0/Emby.Plugin.BlackBarrHelper.deps.json
+/src/bin/Release/net8.0/Emby.Plugin.BlackBarrHelper.dll
+/src/bin/Release/net8.0/Emby.Plugin.BlackBarrHelper.pdb
+/src/obj/Release/net8.0/Emby.Plugin.BlackBarrHelper.csproj.AssemblyReference.cache
+/src/obj/Release/net8.0/Emby.Plugin.BlackBarrHelper.GeneratedMSBuildEditorConfig.editorconfig
+/src/obj/Release/net8.0/Emby.Plugin.BlackBarrHelper.AssemblyInfoInputs.cache
+/src/obj/Release/net8.0/Emby.Plugin.BlackBarrHelper.AssemblyInfo.cs
+/src/obj/Release/net8.0/Emby.Plugin.BlackBarrHelper.csproj.CoreCompileInputs.cache
+/src/obj/Release/net8.0/Emby.Plugin.BlackBarrHelper.dll
+/src/obj/Release/net8.0/Emby.Plugin.BlackBarrHelper.pdb
