@@ -68,10 +68,7 @@ fetch_crop_val() {
 
 # Query BlackBarr API for crop value
 if [ -n "$INPUT_FILE" ]; then
-    CONFIG_XML="/config/plugins/configurations/Emby.Plugin.BlackBarrHelper.xml"
-    if [ ! -f "$CONFIG_XML" ]; then
-        CONFIG_XML="/config/plugins/configurations/Jellyfin.Plugin.BlackBarrHelper.xml"
-    fi
+    CONFIG_XML="/config/plugins/configurations/Jellyfin.Plugin.BlackBarrHelper.xml"
     API_URL="http://127.0.0.1:6795"
 
     if [ -f "$CONFIG_XML" ]; then
@@ -87,7 +84,7 @@ if [ -n "$INPUT_FILE" ]; then
     fi
 
     if [ -z "$CROP_VAL" ]; then
-        for host in 172.17.0.1 192.168.8.56 blackbarr 127.0.0.1 localhost host.docker.internal; do
+        for host in blackbarr 127.0.0.1 localhost; do
             FALLBACK_URL="http://$host:6795"
             if [ "$FALLBACK_URL" != "$API_URL" ]; then
                 RES=$(fetch_crop_val "$INPUT_FILE" "$FALLBACK_URL" || true)
@@ -178,21 +175,75 @@ echo "[BlackBarr Wrapper] Injecting crop=$CROP_VAL into $INPUT_FILE (QSV=$HAS_QS
 # ---------------------------------------------------------------------------
 
 # build_new_filter <original_filter_value>
-#   Appends crop=W:H:X:Y,setsar=1 right before any trailing output label (e.g. [f1_out0]) or at end of chain
+#   Outputs the modified filter string to stdout.
 build_new_filter() {
     ORIG="$1"
-    CROP_FILTER="crop=${CW}:${CH}:${CX}:${CY},setsar=1"
+    OUT=""
+    DONE=0
+    REST="$ORIG"
 
-    case "$ORIG" in
-        *\])
-            _label="[${ORIG##*\[}"
-            _base="${ORIG%\[*}"
-            echo "${_base},${CROP_FILTER}${_label}"
-            ;;
-        *)
-            echo "${ORIG},${CROP_FILTER}"
-            ;;
-    esac
+    while [ -n "$REST" ]; do
+        # Split off the first comma-delimited token
+        case "$REST" in
+            *,*) TOK="${REST%%,*}"; REST="${REST#*,}" ;;
+            *)   TOK="$REST";       REST="" ;;
+        esac
+
+        if [ "$DONE" -eq 0 ]; then
+            if [ "$HAS_QSV" -eq 1 ]; then
+                case "$TOK" in
+                    vpp_qsv*)
+                        # Merge crop into the existing vpp_qsv token using its native cw/ch/cx/cy options.
+                        # This crops in hardware on the QSV surface — works for both H264 (nv12)
+                        # and HEVC (p010) without needing hwdownload/hwupload.
+                        TOK="${TOK}:cw=${CW}:ch=${CH}:cx=${CX}:cy=${CY},setsar=1"
+                        DONE=1
+                        ;;
+                    setparams*)
+                        # No vpp_qsv yet — insert a dedicated vpp_qsv crop+format filter
+                        TOK="vpp_qsv=cw=${CW}:ch=${CH}:cx=${CX}:cy=${CY}:format=nv12,setsar=1,${TOK}"
+                        DONE=1
+                        ;;
+                esac
+            elif [ "$HAS_VAAPI" -eq 1 ]; then
+                case "$TOK" in
+                    scale_vaapi*|setparams*)
+                        # VAAPI has no native crop; download to SW, crop, re-upload
+                        TOK="hwdownload,format=nv12,crop=${CW}:${CH}:${CX}:${CY},setsar=1,hwupload,${TOK}"
+                        DONE=1
+                        ;;
+                esac
+            elif [ "$HAS_CUDA" -eq 1 ]; then
+                case "$TOK" in
+                    scale_cuda*)
+                        TOK="hwdownload,format=nv12,crop=${CW}:${CH}:${CX}:${CY},setsar=1,hwupload_cuda,${TOK}"
+                        DONE=1
+                        ;;
+                    setparams*)
+                        TOK="hwdownload,format=nv12,crop=${CW}:${CH}:${CX}:${CY},setsar=1,hwupload_cuda,${TOK}"
+                        DONE=1
+                        ;;
+                esac
+            else
+                # Software — prepend crop before the very first token
+                TOK="crop=${CW}:${CH}:${CX}:${CY},setsar=1,${TOK}"
+                DONE=1
+            fi
+        fi
+
+        if [ -z "$OUT" ]; then
+            OUT="$TOK"
+        else
+            OUT="${OUT},${TOK}"
+        fi
+    done
+
+    # No recognised insertion point found — prepend SW crop as last resort
+    if [ "$DONE" -eq 0 ]; then
+        OUT="crop=${CW}:${CH}:${CX}:${CY},setsar=1,${OUT}"
+    fi
+
+    echo "$OUT"
 }
 
 # Walk all arguments looking for -vf / -filter_complex and rewrite them
@@ -222,70 +273,28 @@ for arg in "$@"; do
 done
 
 # If no -vf was present, insert one before the video codec flag
-if [ -n "$CROP_VAL" ]; then
-    if [ "$HAS_VAAPI" -eq 1 ]; then
-        # VAAPI hwdownload/hwupload creates a severe PCIe sync bottleneck (~0.25x speed).
-        # Rewrite VAAPI encoders to libx264 -preset ultrafast (5.74x speed, 24 CPU threads).
-        SKIP_NEXT=0
-        TOTAL=$#
-        COUNT=0
-        while [ "$COUNT" -lt "$TOTAL" ]; do
-            arg="$1"; shift
-            COUNT=$((COUNT + 1))
-
-            if [ "$SKIP_NEXT" -eq 1 ]; then
-                SKIP_NEXT=0
-                continue
-            fi
-
-            case "$arg" in
-                -hwaccel*|-hwaccel_device*|-hwaccel_output_format*)
-                    SKIP_NEXT=1
-                    continue
-                    ;;
-                h264_vaapi|hevc_vaapi|av1_vaapi|vp9_vaapi)
-                    set -- "$@" "libx264" "-preset" "ultrafast"
-                    continue
-                    ;;
-            esac
-
-            set -- "$@" "$arg"
-        done
-        HAS_VAAPI=0
-    fi
-fi
-
 if [ "$FILTER_INJECTED" -eq 0 ]; then
     SW_CROP="crop=${CW}:${CH}:${CX}:${CY},setsar=1"
     if [ "$HAS_QSV" -eq 1 ]; then
         HW_CROP="vpp_qsv=cw=${CW}:ch=${CH}:cx=${CX}:cy=${CY}:format=nv12,setsar=1"
-        EXTRA_FLAGS=""
+    elif [ "$HAS_VAAPI" -eq 1 ]; then
+        HW_CROP="hwdownload,format=nv12,crop=${CW}:${CH}:${CX}:${CY},setsar=1,hwupload"
     elif [ "$HAS_CUDA" -eq 1 ]; then
         HW_CROP="hwdownload,format=nv12,crop=${CW}:${CH}:${CX}:${CY},setsar=1,hwupload_cuda"
-        EXTRA_FLAGS=""
     else
         HW_CROP="$SW_CROP"
-        EXTRA_FLAGS=""
     fi
 
-    PASSED_I=0
     INJECTED_VF=0
     TOTAL=$#
     COUNT=0
     while [ "$COUNT" -lt "$TOTAL" ]; do
         arg="$1"; shift
         COUNT=$((COUNT + 1))
-        if [ "$arg" = "-i" ]; then
-            PASSED_I=1
-        fi
-        if [ "$INJECTED_VF" -eq 0 ] && [ "$PASSED_I" -eq 1 ]; then
+        if [ "$INJECTED_VF" -eq 0 ]; then
             case "$arg" in
-                -c:v*|-codec:v*|-vcodec*)
-                    if [ -n "$EXTRA_FLAGS" ]; then
-                        set -- "$@" $EXTRA_FLAGS "-vf" "$HW_CROP"
-                    else
-                        set -- "$@" "-vf" "$HW_CROP"
-                    fi
+                -c:v|-codec:v|-vcodec)
+                    set -- "$@" "-vf" "$HW_CROP"
                     INJECTED_VF=1
                     ;;
             esac
@@ -294,11 +303,7 @@ if [ "$FILTER_INJECTED" -eq 0 ]; then
     done
 
     if [ "$INJECTED_VF" -eq 0 ]; then
-        if [ -n "$EXTRA_FLAGS" ]; then
-            set -- "$@" $EXTRA_FLAGS "-vf" "$HW_CROP"
-        else
-            set -- "$@" "-vf" "$HW_CROP"
-        fi
+        set -- "$@" "-vf" "$HW_CROP"
     fi
 fi
 
